@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARIA — Analytics</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f11;--bg2:#18181c;--bg3:#222228;--bg4:#2a2a32;
+  --border:#2e2e38;--text:#e8e8f0;--text2:#9898b0;--text3:#5a5a72;
+  --accent:#7c6af7;--green:#3dd68c;--red:#f06060;--amber:#f0a040;--blue:#4a9eff;--teal:#3dd6b8;
+  --r:10px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 24px;
+        display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.topbar h1{font-size:15px;font-weight:700}
+.topbar h1 span{color:var(--accent)}
+.content{max-width:1200px;margin:0 auto;padding:20px}
+.tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border)}
+.tab{padding:8px 16px;font-size:13px;color:var(--text3);cursor:pointer;border:none;background:none;
+     border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab:hover{color:var(--text2)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.pane{display:none}.pane.active{display:block}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:18px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.card h3{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px}
+.stat{text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.stat .n{font-size:28px;font-weight:700}
+.stat .l{font-size:10px;color:var(--text3);margin-top:3px}
+.chart-wrap{position:relative;height:220px}
+.inp{background:var(--bg3);border:1px solid var(--border);border-radius:6px;
+     padding:8px 12px;color:var(--text);font-size:13px;outline:none;font-family:inherit}
+.inp:focus{border-color:var(--accent)}
+.btn{padding:8px 14px;border-radius:6px;font-size:12px;font-weight:500;
+     cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text2);transition:all .15s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:#5b4dd4}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;padding:7px 10px;color:var(--text3);border-bottom:1px solid var(--border);
+        font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+.tbl td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text2)}
+.tbl tr:hover td{background:var(--bg3)}
+.tbl tr:last-child td{border:none}
+.badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500}
+.paper-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);
+            padding:14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.paper-card:hover{border-color:var(--accent)}
+.paper-card a{color:var(--accent);text-decoration:none;font-size:13px;font-weight:600}
+.paper-card .meta{font-size:11px;color:var(--text3);margin-top:4px}
+.paper-card .abstract{font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5}
+.insight-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);
+             padding:14px;font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:12px}
+.insight-box strong{color:var(--text)}
+.app-bar{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.app-bar:last-child{border:none}
+.app-bar .name{font-size:12px;color:var(--text2);min-width:140px}
+.app-bar .bar-wrap{flex:1;background:var(--bg4);border-radius:3px;height:6px;overflow:hidden}
+.app-bar .bar-fill{height:100%;border-radius:3px;transition:width .5s}
+.app-bar .time{font-size:11px;color:var(--text3);min-width:50px;text-align:right}
+.cat-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 10px;
+          border-radius:20px;font-weight:500;margin:2px}
+.device-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);
+             padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.heatmap{display:grid;grid-template-columns:repeat(24,1fr);gap:2px;margin-bottom:6px}
+.hm-cell{height:20px;border-radius:2px;cursor:pointer}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>A<span>R</span>IA — System Analytics</h1>
+  <div style="display:flex;gap:12px;align-items:center">
+    <span id="live-time" style="font-size:11px;color:var(--text3)"></span>
+    <a href="/" style="font-size:12px;color:var(--text2);text-decoration:none">← Back to ARIA</a>
+  </div>
+</div>
+
+<div class="content">
+  <div class="tabs">
+    <button class="tab active" onclick="tab('today',this)">Today</button>
+    <button class="tab" onclick="tab('devices',this);loadDevices()">All Devices</button>
+    <button class="tab" onclick="tab('behaviour',this);loadBehaviour()">Behaviour Profile</button>
+    <button class="tab" onclick="tab('research',this)">Research</button>
+    <button class="tab" onclick="tab('system',this);loadSystem()">System</button>
+  </div>
+
+  <!-- TODAY -->
+  <div class="pane active" id="pane-today">
+    <div class="grid4" id="today-stats">
+      <div class="stat"><div class="n accent" id="t-active">—</div><div class="l">Active hours</div></div>
+      <div class="stat"><div class="n" style="color:var(--text3)" id="t-idle">—</div><div class="l">Idle hours</div></div>
+      <div class="stat"><div class="n" style="color:var(--green)" id="t-focus">—</div><div class="l">Focus sessions</div></div>
+      <div class="stat"><div class="n" style="color:var(--blue)" id="t-apps">—</div><div class="l">Apps used</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Time per app</h3>
+        <div id="app-bars"></div>
+      </div>
+      <div class="card">
+        <h3>Time by category</h3>
+        <div class="chart-wrap"><canvas id="cat-chart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Hourly activity heatmap</h3>
+      <div style="display:flex;gap:4px;margin-bottom:4px">
+        <span style="font-size:10px;color:var(--text3);width:40px"></span>
+        <div style="display:grid;grid-template-columns:repeat(24,1fr);gap:2px;flex:1;font-size:9px;color:var(--text3)">
+          <span style="grid-column:1">0h</span><span style="grid-column:6">5h</span>
+          <span style="grid-column:9">8h</span><span style="grid-column:13">12h</span>
+          <span style="grid-column:17">16h</span><span style="grid-column:21">20h</span>
+        </div>
+      </div>
+      <div id="heatmap-rows"></div>
+    </div>
+  </div>
+
+  <!-- ALL DEVICES -->
+  <div class="pane" id="pane-devices">
+    <div class="card" style="margin-bottom:16px">
+      <h3>All devices tracked today</h3>
+      <div id="device-list">Loading...</div>
+    </div>
+    <div class="card">
+      <h3>Cross-device access</h3>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        Any device on the same WiFi can view this dashboard.<br>
+        Find your PC's local IP: <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11px">ipconfig</code> (Windows) or
+        <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11px">ifconfig</code> (Mac/Linux)<br><br>
+        Open on any device: <code id="network-url" style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11px;color:var(--accent)">http://YOUR-IP:8000/analytics</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- BEHAVIOUR PROFILE -->
+  <div class="pane" id="pane-behaviour">
+    <div class="grid3" id="psych-stats">
+      <div class="stat"><div class="n" style="color:var(--accent)" id="b-style">—</div><div class="l">Cognitive style</div></div>
+      <div class="stat"><div class="n" style="color:var(--amber)" id="b-stress">—</div><div class="l">Stress level</div></div>
+      <div class="stat"><div class="n" style="color:var(--green)" id="b-focus">—</div><div class="l">Avg focus (min)</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Psychology profile</h3>
+        <div id="psych-narrative" class="insight-box">Loading...</div>
+        <div id="psych-signals"></div>
+      </div>
+      <div class="card">
+        <h3>Weekly rhythm</h3>
+        <div class="chart-wrap"><canvas id="rhythm-chart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Stress indicators</h3>
+      <div id="stress-list">Loading...</div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Research backed insights for your profile</h3>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn primary" onclick="loadCorrelation()">Generate insights from research</button>
+        <span style="font-size:11px;color:var(--text3);align-self:center">Searches arXiv + PubMed + Semantic Scholar based on your profile</span>
+      </div>
+      <div id="correlation-result"></div>
+    </div>
+  </div>
+
+  <!-- RESEARCH -->
+  <div class="pane" id="pane-research">
+    <div class="card" style="margin-bottom:16px">
+      <h3>Search scientific databases</h3>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
+        Searches arXiv, PubMed, Semantic Scholar, and CORE simultaneously.
+        All results stored in your knowledge base.
+      </p>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input class="inp" id="r-query" placeholder="Search any scientific topic..." style="flex:1"
+               onkeydown="if(event.key==='Enter')doResearch()">
+        <button class="btn primary" onclick="doResearch()">Search</button>
+      </div>
+      <div id="research-results"></div>
+    </div>
+
+    <div class="card">
+      <h3>Connect the dots between two topics</h3>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
+        Find hidden scientific connections between seemingly unrelated fields.
+      </p>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input class="inp" id="dot-a" placeholder="Topic A (e.g. sleep deprivation)" style="flex:1">
+        <input class="inp" id="dot-b" placeholder="Topic B (e.g. software bugs)" style="flex:1">
+        <button class="btn primary" onclick="connectDots()">Connect</button>
+      </div>
+      <div id="dots-result"></div>
+    </div>
+  </div>
+
+  <!-- SYSTEM -->
+  <div class="pane" id="pane-system">
+    <div class="card" style="margin-bottom:16px">
+      <h3>CPU / RAM / Network (last 24h)</h3>
+      <div class="chart-wrap" style="height:200px"><canvas id="sys-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>App switching patterns</h3>
+      <div id="switch-table">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let charts = {};
+
+function tab(id,btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('pane-'+id).classList.add('active');
+}
+
+// Live clock
+setInterval(()=>{
+  document.getElementById('live-time').textContent=new Date().toLocaleTimeString();
+},1000);
+
+// Chart.js theme
+Chart.defaults.color='#9898b0';
+Chart.defaults.borderColor='#2e2e38';
+
+function mkChart(id,type,labels,datasets,opts={}){
+  const ctx=document.getElementById(id)?.getContext('2d');
+  if(!ctx)return;
+  if(charts[id]){charts[id].destroy();}
+  charts[id]=new Chart(ctx,{
+    type,
+    data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#9898b0',font:{size:11}}},
+               tooltip:{backgroundColor:'#18181c',borderColor:'#2e2e38',borderWidth:1}},
+      scales:type!=='pie'&&type!=='doughnut'?{
+        x:{grid:{color:'#2e2e38'},ticks:{color:'#5a5a72',font:{size:10}}},
+        y:{grid:{color:'#2e2e38'},ticks:{color:'#5a5a72',font:{size:10}}},
+      }:{},
+      ...opts,
+    }
+  });
+}
+
+// ── TODAY ─────────────────────────────────────────────────────────────────────
+async function loadToday(){
+  try{
+    const[today,hourly]=await Promise.all([
+      fetch(`${API}/api/monitor/today`).then(r=>r.json()),
+      fetch(`${API}/api/monitor/hourly?days=1`).then(r=>r.json()),
+    ]);
+    document.getElementById('t-active').textContent=today.active_time_h??'—';
+    document.getElementById('t-idle').textContent=today.idle_time_h??'—';
+    document.getElementById('t-focus').textContent=today.focus_sessions?.length??0;
+    document.getElementById('t-apps').textContent=today.top_apps?.length??0;
+
+    // App bars
+    const bars=document.getElementById('app-bars');
+    const apps=today.top_apps||[];
+    const maxMin=apps.length?apps[0].minutes:1;
+    const catColors={coding:'#7c6af7',browser:'#4a9eff',communication:'#f0a040',
+                     document:'#3dd68c',media:'#f06060',social:'#ed93b1',
+                     design:'#3dd6b8',other:'#5a5a72'};
+    bars.innerHTML=apps.slice(0,10).map(a=>`
+      <div class="app-bar">
+        <div class="name">${esc(a.app)}</div>
+        <div class="bar-wrap">
+          <div class="bar-fill" style="width:${Math.round(a.minutes/maxMin*100)}%;background:${catColors[a.category]||'#5a5a72'}"></div>
+        </div>
+        <div class="time">${a.minutes}m</div>
+      </div>`).join('');
+
+    // Category chart
+    const cats=today.by_category||{};
+    mkChart('cat-chart','doughnut',Object.keys(cats),
+      [{data:Object.values(cats),
+        backgroundColor:Object.keys(cats).map(c=>catColors[c]||'#5a5a72')}]
+    );
+
+    // Heatmap
+    renderHeatmap(hourly.hourly||[]);
+  }catch(e){console.error(e);}
+}
+
+function renderHeatmap(data){
+  const cats=['coding','browser','communication','document','media','social','other'];
+  const catColors={coding:'#7c6af7',browser:'#4a9eff',communication:'#f0a040',
+                   document:'#3dd68c',media:'#f06060',social:'#ed93b1',other:'#2e2e38'};
+  const rows=document.getElementById('heatmap-rows');
+  rows.innerHTML='';
+  for(const cat of cats){
+    const catData=data.filter(d=>d.category===cat);
+    const byHour={};
+    catData.forEach(d=>byHour[d.hour]=(byHour[d.hour]||0)+d.minutes);
+    const maxVal=Math.max(...Object.values(byHour),1);
+    const div=document.createElement('div');
+    div.style.cssText='display:flex;gap:4px;align-items:center;margin-bottom:4px';
+    div.innerHTML=`<span style="font-size:9px;color:var(--text3);width:80px;text-align:right">${cat}</span>
+      <div class="heatmap">${
+        Array.from({length:24},(_,h)=>{
+          const v=(byHour[h]||0)/maxVal;
+          const opacity=Math.max(0.05,v);
+          return `<div class="hm-cell" style="background:${catColors[cat]||'#5a5a72'};opacity:${opacity}"
+                       title="${cat} ${h}:00 — ${(byHour[h]||0).toFixed(0)}min"></div>`;
+        }).join('')
+      }</div>`;
+    rows.appendChild(div);
+  }
+}
+
+// ── DEVICES ───────────────────────────────────────────────────────────────────
+async function loadDevices(){
+  try{
+    const d=await fetch(`${API}/api/monitor/devices`).then(r=>r.json());
+    const list=document.getElementById('device-list');
+    if(!d.devices?.length){list.innerHTML='<p style="color:var(--text3);font-size:13px">No device data yet. Monitor runs in background.</p>';return;}
+    list.innerHTML=d.devices.map(dev=>`
+      <div class="device-card">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(dev.device_name)}</div>
+          <div style="font-size:11px;color:var(--text3)">ID: ${dev.device_id}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:16px;font-weight:700;color:var(--accent)">${dev.active_hours}h</div>
+          <div style="font-size:10px;color:var(--text3)">${dev.unique_apps} apps used today</div>
+        </div>
+      </div>`).join('');
+  }catch(e){console.error(e);}
+}
+
+// ── BEHAVIOUR ─────────────────────────────────────────────────────────────────
+async function loadBehaviour(){
+  try{
+    const[prof,rhythm,stress]=await Promise.all([
+      fetch(`${API}/api/behaviour/profile`).then(r=>r.json()),
+      fetch(`${API}/api/behaviour/rhythm`).then(r=>r.json()),
+      fetch(`${API}/api/behaviour/stress`).then(r=>r.json()),
+    ]);
+    const styleLabels={deep_worker:'Deep worker',high_switcher:'High switcher',
+                        moderate_focus:'Moderate focus',sprint_worker:'Sprint worker'};
+    document.getElementById('b-style').textContent=styleLabels[prof.cognitive_style]||prof.cognitive_style||'—';
+    document.getElementById('b-stress').textContent=prof.stress_level||'—';
+    document.getElementById('b-focus').textContent=prof.avg_focus_min||'—';
+
+    // Narrative
+    const narr=document.getElementById('psych-narrative');
+    if(prof.narrative){
+      narr.innerHTML=marked.parse(prof.narrative);
+    }else{
+      narr.textContent='Use ARIA for a few days to build your profile.';
+    }
+
+    // Style signals
+    const sigs=document.getElementById('psych-signals');
+    sigs.innerHTML=(prof.style_signals||[]).map(s=>
+      `<div style="font-size:12px;color:var(--text2);padding:4px 0;border-bottom:1px solid var(--border)">→ ${esc(s)}</div>`
+    ).join('');
+
+    // Weekly rhythm chart
+    if(rhythm.daily?.length){
+      mkChart('rhythm-chart','bar',
+        rhythm.daily.map(d=>d.day),
+        [{label:'Productive (h)',data:rhythm.daily.map(d=>d.productive_h),backgroundColor:'#7c6af733',borderColor:'#7c6af7',borderWidth:1},
+         {label:'Total (h)',data:rhythm.daily.map(d=>d.total_h),backgroundColor:'#2e2e38',borderColor:'#3a3a48',borderWidth:1}]
+      );
+    }
+
+    // Stress
+    const stressList=document.getElementById('stress-list');
+    const indicators=stress.indicators||[];
+    if(indicators.length){
+      stressList.innerHTML=indicators.map(s=>
+        `<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)">
+          <span style="color:var(--amber)">!</span><span>${esc(s)}</span></div>`
+      ).join('');
+    }else{
+      stressList.innerHTML='<p style="color:var(--green);font-size:12px">No significant stress indicators detected.</p>';
+    }
+  }catch(e){console.error(e);}
+}
+
+async function loadCorrelation(){
+  const el=document.getElementById('correlation-result');
+  el.innerHTML='<p style="color:var(--text3);font-size:12px">Searching arXiv, PubMed, Semantic Scholar...</p>';
+  try{
+    const d=await fetch(`${API}/api/research/correlate`).then(r=>r.json());
+    let html='';
+    if(d.synthesis){
+      html+=`<div class="insight-box">${marked.parse(d.synthesis)}</div>`;
+    }
+    for(const link of d.research_links||[]){
+      html+=`<div style="margin-bottom:12px">
+        <p style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:6px">${esc(link.label)}</p>
+        ${link.papers.slice(0,2).map(p=>`
+          <div class="paper-card">
+            <a href="${p.url||'#'}" target="_blank">${esc(p.title||'')}</a>
+            <div class="abstract">${esc((p.tldr||p.abstract||'').substring(0,200))}</div>
+          </div>`).join('')}
+      </div>`;
+    }
+    el.innerHTML=html||'<p style="color:var(--text3)">No correlations found yet. Use ARIA more to build profile.</p>';
+  }catch(e){el.innerHTML=`<p style="color:var(--red)">${esc(e.message)}</p>`;}
+}
+
+// ── RESEARCH ──────────────────────────────────────────────────────────────────
+async function doResearch(){
+  const q=document.getElementById('r-query').value.trim();
+  if(!q)return;
+  const el=document.getElementById('research-results');
+  el.innerHTML='<p style="color:var(--text3);font-size:12px">Searching all databases...</p>';
+  try{
+    const d=await fetch(`${API}/api/research/search`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({query:q})
+    }).then(r=>r.json());
+
+    const bySource=d.by_source||{};
+    let html=`<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      ${Object.entries(bySource).map(([s,n])=>`<span class="badge" style="background:rgba(124,106,247,.15);color:var(--accent)">${s}: ${n}</span>`).join('')}
+      <span class="badge" style="background:rgba(61,214,140,.15);color:var(--green)">Total: ${d.total}</span>
+    </div>`;
+    for(const p of d.papers||[]){
+      const src={arxiv:'arXiv',semantic_scholar:'Semantic Scholar',pubmed:'PubMed',core:'CORE'}[p.source]||p.source;
+      html+=`<div class="paper-card">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <a href="${p.url||'#'}" target="_blank">${esc(p.title||'')}</a>
+          <span class="badge" style="background:rgba(74,158,255,.12);color:var(--blue)">${src}</span>
+        </div>
+        <div class="meta">${p.authors?.join(', ')||''} ${p.year?'· '+p.year:''} ${p.citations?'· '+p.citations+' citations':''}</div>
+        <div class="abstract">${esc((p.tldr||p.abstract||'').substring(0,250))}</div>
+      </div>`;
+    }
+    el.innerHTML=html||'<p style="color:var(--text3)">No results found.</p>';
+  }catch(e){el.innerHTML=`<p style="color:var(--red)">${esc(e.message)}</p>`;}
+}
+
+async function connectDots(){
+  const a=document.getElementById('dot-a').value.trim();
+  const b=document.getElementById('dot-b').value.trim();
+  if(!a||!b)return;
+  const el=document.getElementById('dots-result');
+  el.innerHTML='<p style="color:var(--text3);font-size:12px">Searching for connections between topics...</p>';
+  try{
+    const d=await fetch(`${API}/api/research/connect`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({topic_a:a,topic_b:b})
+    }).then(r=>r.json());
+
+    let html=`<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+      <span style="font-size:13px;color:var(--text2)">${esc(a)}</span>
+      <span style="color:var(--accent)">↔</span>
+      <span style="font-size:13px;color:var(--text2)">${esc(b)}</span>
+      <span class="badge" style="background:rgba(61,214,140,.15);color:var(--green)">${d.confidence||''}</span>
+    </div>`;
+
+    if(d.connection){
+      html+=`<div class="insight-box">${marked.parse(d.connection)}</div>`;
+    }
+    if(d.bridge_papers?.length){
+      html+='<p style="font-size:11px;color:var(--text3);margin-bottom:8px">Bridge papers:</p>';
+      for(const p of d.bridge_papers.slice(0,3)){
+        html+=`<div class="paper-card">
+          <a href="${p.url||'#'}" target="_blank">${esc(p.title||'')}</a>
+          <div class="abstract">${esc((p.tldr||p.abstract||'').substring(0,200))}</div>
+        </div>`;
+      }
+    }
+    el.innerHTML=html;
+  }catch(e){el.innerHTML=`<p style="color:var(--red)">${esc(e.message)}</p>`;}
+}
+
+// ── SYSTEM ────────────────────────────────────────────────────────────────────
+async function loadSystem(){
+  try{
+    const[sys,sw]=await Promise.all([
+      fetch(`${API}/api/monitor/system?hours=24`).then(r=>r.json()),
+      fetch(`${API}/api/monitor/switches?hours=24`).then(r=>r.json()),
+    ]);
+    if(sys.trend?.length){
+      mkChart('sys-chart','line',
+        sys.trend.map(t=>t.ts.substring(11,16)),
+        [{label:'CPU %',data:sys.trend.map(t=>t.cpu),borderColor:'#7c6af7',tension:.3,fill:false,pointRadius:0},
+         {label:'RAM %',data:sys.trend.map(t=>t.ram),borderColor:'#4a9eff',tension:.3,fill:false,pointRadius:0}]
+      );
+    }
+    const sw_tbl=document.getElementById('switch-table');
+    if(sw.switches?.length){
+      sw_tbl.innerHTML=`<table class="tbl">
+        <thead><tr><th>From</th><th>To</th><th>Times</th></tr></thead>
+        <tbody>${sw.switches.map(s=>`<tr>
+          <td>${esc(s.from)}</td><td>${esc(s.to)}</td>
+          <td><span class="badge" style="background:rgba(124,106,247,.12);color:var(--accent)">${s.count}x</span></td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    }else{sw_tbl.innerHTML='<p style="color:var(--text3);font-size:12px">No switch data yet.</p>';}
+  }catch(e){console.error(e);}
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// Load today on open
+loadToday();
+</script>
+</body>
+</html>

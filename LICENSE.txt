@@ -1,0 +1,52 @@
+ARIA — Adaptive Reasoning Intelligence Architecture
+Copyright (c) 2024-2026 ARIA AI. All rights reserved.
+
+ARIA Personal AI Assistant — End User License Agreement
+========================================================
+
+IMPORTANT: READ THIS AGREEMENT CAREFULLY BEFORE INSTALLING OR USING ARIA.
+
+By installing, copying, or otherwise using ARIA, you agree to be bound by the
+terms of this License Agreement. If you do not agree to the terms, do not
+install or use ARIA.
+
+1. GRANT OF LICENSE
+   ARIA AI grants you a personal, non-exclusive, non-transferable license to
+   install and use ARIA solely for your personal, non-commercial purposes on
+   devices you own or control.
+
+2. RESTRICTIONS
+   You may not:
+   (a) copy or distribute ARIA for commercial purposes;
+   (b) reverse engineer, decompile, or disassemble any component of ARIA;
+   (c) remove or alter any proprietary notices or labels on ARIA;
+   (d) use ARIA to develop a competing product.
+
+3. PRIVACY & DATA
+   ARIA runs entirely on your local machine. No personal data is transmitted to
+   external servers unless you configure integrations (e.g., API keys) that
+   explicitly do so. You are responsible for any data you share with third-party
+   AI model providers.
+
+4. THIRD-PARTY COMPONENTS
+   ARIA incorporates open-source libraries listed in requirements.txt. Each
+   component is subject to its own license terms.
+
+5. DISCLAIMER OF WARRANTIES
+   ARIA IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. ARIA AI EXPRESSLY
+   DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF
+   MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+6. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL ARIA AI BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL,
+   OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE ARIA.
+
+7. TERMINATION
+   This license is effective until terminated. It terminates automatically if
+   you fail to comply with any term of this Agreement.
+
+8. GOVERNING LAW
+   This Agreement shall be governed by applicable local laws.
+
+---------------------------------------------------------------------------
+ARIA AI | Local Intelligence, Full Control

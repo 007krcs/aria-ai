@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pfx
+*.cer
+aria_codesign.*
+
+# Build outputs
+dist/
+build/
+app/dist/
+app/node_modules/
+
+# Data / models (too large)
+models/*.bin
+models/*.gguf
+models/*.pt
+models/*.safetensors
+data/
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Installer assets (regenerated)
+assets/wizard_banner.bmp
+assets/wizard_header.bmp

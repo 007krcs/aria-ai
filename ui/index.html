@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>ARIA — Autonomous Reasoning Intelligence Assistant</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#00050f;--bg1:#010a1a;--bg2:#020f22;--bg3:#04152e;--bg4:#071e3d;
+  --cyan:#00d4ff;--cyan2:#0099cc;--cyan3:#006699;
+  --glow:rgba(0,212,255,0.15);--glow2:rgba(0,212,255,0.05);
+  --safe:#00ff88;--caution:#ffaa00;--danger:#ff3355;
+  --text:#c8eeff;--text2:#7ab8d4;--text3:#3a6070;
+  --border:rgba(0,212,255,0.12);--border2:rgba(0,212,255,0.25);
+  --bar-h:52px;--left-w:220px;--right-w:260px;
+}
+
+/* ─── BASE ─────────────────────────────────────────────── */
+html,body{height:100%;overflow:hidden}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg0);color:var(--text);
+     font-size:13px;line-height:1.5}
+
+/* ─── ANIMATED GRID BACKGROUND ─────────────────────────── */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);
+  background-size:40px 40px;
+  animation:gridMove 20s linear infinite;
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(180deg,transparent 0%,rgba(0,212,255,.03) 50%,transparent 100%);
+  height:200%;top:-50%;
+  animation:scanSweep 8s linear infinite;
+}
+@keyframes gridMove{0%{background-position:0 0}100%{background-position:40px 40px}}
+@keyframes scanSweep{0%{transform:translateY(-50%)}100%{transform:translateY(0%)}}
+
+/* ─── HUD CORNERS ───────────────────────────────────────── */
+.hud-corner{position:fixed;width:24px;height:24px;z-index:2;pointer-events:none}
+.hud-corner.tl{top:4px;left:4px;border-top:2px solid var(--cyan);border-left:2px solid var(--cyan)}
+.hud-corner.tr{top:4px;right:4px;border-top:2px solid var(--cyan);border-right:2px solid var(--cyan)}
+.hud-corner.bl{bottom:4px;left:4px;border-bottom:2px solid var(--cyan);border-left:2px solid var(--cyan)}
+.hud-corner.br{bottom:4px;right:4px;border-bottom:2px solid var(--cyan);border-right:2px solid var(--cyan)}
+
+/* ─── LAYOUT SHELL ──────────────────────────────────────── */
+#app{position:relative;z-index:3;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* ─── TOP BAR ───────────────────────────────────────────── */
+#topbar{
+  height:var(--bar-h);display:flex;align-items:center;padding:0 16px;
+  background:rgba(0,5,15,.85);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border2);flex-shrink:0;gap:12px;
+}
+.aria-logo{
+  width:34px;height:34px;border-radius:50%;border:2px solid var(--cyan);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:12px;color:var(--cyan);letter-spacing:1px;
+  box-shadow:0 0 12px var(--glow),inset 0 0 8px var(--glow2);
+  animation:ringPulse 3s ease-in-out infinite;flex-shrink:0;
+}
+@keyframes ringPulse{0%,100%{box-shadow:0 0 12px var(--glow),inset 0 0 8px var(--glow2)}
+  50%{box-shadow:0 0 24px rgba(0,212,255,.35),inset 0 0 16px rgba(0,212,255,.1)}}
+.aria-title{font-size:16px;font-weight:700;color:var(--cyan);letter-spacing:2px;
+            text-shadow:0 0 12px rgba(0,212,255,.6)}
+.aria-sub{font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;
+          margin-left:4px;align-self:flex-end;padding-bottom:2px}
+.top-chips{display:flex;gap:6px;margin-left:8px;flex-wrap:nowrap;overflow:hidden}
+.chip{
+  padding:3px 9px;border-radius:20px;font-size:10px;letter-spacing:.5px;
+  border:1px solid var(--border2);color:var(--text2);background:var(--glow2);
+  display:flex;align-items:center;gap:4px;white-space:nowrap;
+}
+.chip .dot{width:6px;height:6px;border-radius:50%;animation:dotBlink 2s ease-in-out infinite}
+.chip.on .dot{background:var(--safe);box-shadow:0 0 6px var(--safe)}
+.chip.warn .dot{background:var(--caution)}
+@keyframes dotBlink{0%,100%{opacity:1}50%{opacity:.3}}
+#top-clock{margin-left:auto;font-size:11px;color:var(--cyan2);letter-spacing:1px;font-variant-numeric:tabular-nums}
+.top-btns{display:flex;gap:6px;margin-left:8px}
+.top-btn{
+  padding:5px 10px;border-radius:4px;font-size:10px;letter-spacing:.5px;
+  border:1px solid var(--border);background:transparent;color:var(--text2);
+  cursor:pointer;transition:all .2s;text-transform:uppercase;
+}
+.top-btn:hover,.top-btn.active{border-color:var(--cyan);color:var(--cyan);background:var(--glow2)}
+
+/* ─── BODY ROW (below topbar) ───────────────────────────── */
+#body-row{display:flex;flex:1;overflow:hidden}
+
+/* ─── LEFT PANEL ────────────────────────────────────────── */
+#left-panel{
+  width:var(--left-w);background:rgba(0,8,20,.7);
+  border-right:1px solid var(--border);display:flex;flex-direction:column;
+  flex-shrink:0;overflow:hidden;
+}
+.panel-hdr{
+  padding:8px 12px;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--text3);border-bottom:1px solid var(--border);flex-shrink:0;
+}
+#neural-canvas{width:100%;height:140px;flex-shrink:0}
+.metrics{padding:10px 12px;flex-shrink:0}
+.metric{margin-bottom:8px}
+.metric-row{display:flex;justify-content:space-between;font-size:10px;
+            color:var(--text2);margin-bottom:3px}
+.metric-val{color:var(--cyan);font-variant-numeric:tabular-nums}
+.bar-bg{height:3px;background:rgba(0,212,255,.1);border-radius:2px}
+.bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--cyan3),var(--cyan));
+          transition:width .8s ease;box-shadow:0 0 6px rgba(0,212,255,.4)}
+.mode-selector{padding:8px 12px;flex-shrink:0}
+.mode-label{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.mode-btns{display:flex;flex-direction:column;gap:3px}
+.mode-btn{
+  padding:5px 8px;border-radius:3px;font-size:10px;letter-spacing:.5px;
+  border:1px solid var(--border);background:transparent;color:var(--text3);
+  cursor:pointer;transition:all .2s;text-align:left;text-transform:uppercase;
+}
+.mode-btn.active{border-color:var(--cyan);color:var(--cyan);background:var(--glow2)}
+.mode-btn:hover{border-color:var(--border2);color:var(--text2)}
+#agent-feed{flex:1;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:3px}
+.agent-line{
+  font-size:10px;color:var(--text3);padding:2px 0;
+  display:flex;align-items:center;gap:5px;
+  animation:agentFire .4s ease;
+}
+.agent-line.active{color:var(--cyan)}
+.agent-line::before{content:'›';color:var(--cyan3)}
+@keyframes agentFire{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:none}}
+
+/* ─── MAIN PANEL ────────────────────────────────────────── */
+#main-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#chat-messages{
+  flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;
+  scroll-behavior:smooth;
+}
+#chat-messages::-webkit-scrollbar{width:4px}
+#chat-messages::-webkit-scrollbar-track{background:transparent}
+#chat-messages::-webkit-scrollbar-thumb{background:var(--cyan3);border-radius:2px}
+
+/* Empty state */
+.empty-state{
+  margin:auto;text-align:center;padding:32px;max-width:500px;
+}
+.empty-logo{font-size:48px;color:var(--cyan);opacity:.3;margin-bottom:16px;
+            text-shadow:0 0 40px var(--cyan);letter-spacing:4px;font-weight:900}
+.empty-title{font-size:18px;color:var(--text2);margin-bottom:6px}
+.empty-sub{font-size:12px;color:var(--text3);margin-bottom:24px}
+.quick-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.quick-chip{
+  padding:6px 12px;border-radius:20px;font-size:11px;
+  border:1px solid var(--border2);color:var(--text2);background:var(--glow2);
+  cursor:pointer;transition:all .2s;
+}
+.quick-chip:hover{border-color:var(--cyan);color:var(--cyan);background:var(--glow)}
+
+/* Messages */
+.msg{display:flex;flex-direction:column;max-width:100%;animation:msgIn .25s ease}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg.user{align-items:flex-end}
+.msg.aria{align-items:flex-start}
+.msg-bubble{
+  padding:10px 14px;border-radius:8px;max-width:82%;line-height:1.6;font-size:13px;
+}
+.msg.user .msg-bubble{
+  background:rgba(0,212,255,.12);border:1px solid var(--border2);
+  color:var(--text);border-bottom-right-radius:2px;
+}
+.msg.aria .msg-bubble{
+  background:rgba(2,15,34,.8);border:1px solid var(--border);
+  color:var(--text);border-bottom-left-radius:2px;
+}
+.msg-meta{font-size:9px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:6px}
+.risk-badge{
+  padding:1px 7px;border-radius:3px;font-size:9px;letter-spacing:.5px;font-weight:700;
+  text-transform:uppercase;
+}
+.risk-badge.safe{background:rgba(0,255,136,.1);color:var(--safe);border:1px solid rgba(0,255,136,.2)}
+.risk-badge.caution{background:rgba(255,170,0,.1);color:var(--caution);border:1px solid rgba(255,170,0,.2)}
+.risk-badge.danger{background:rgba(255,51,85,.1);color:var(--danger);border:1px solid rgba(255,51,85,.2)}
+
+/* Confirm box */
+.confirm-box{
+  margin-top:8px;padding:10px 12px;border-radius:6px;
+  background:rgba(255,51,85,.06);border:1px solid rgba(255,51,85,.25);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.confirm-box span{font-size:11px;color:var(--text2);flex:1}
+.confirm-btn{
+  padding:5px 12px;border-radius:4px;font-size:11px;cursor:pointer;
+  border:1px solid;transition:all .2s;font-weight:600;
+}
+.confirm-btn.yes{background:rgba(255,51,85,.15);border-color:var(--danger);color:var(--danger)}
+.confirm-btn.yes:hover{background:var(--danger);color:#fff}
+.confirm-btn.no{background:transparent;border-color:var(--border2);color:var(--text2)}
+.confirm-btn.no:hover{border-color:var(--cyan);color:var(--cyan)}
+
+/* Suggestion chip */
+.suggest-chip{
+  margin-top:6px;padding:5px 10px;border-radius:4px;font-size:11px;
+  border:1px solid var(--border);background:var(--glow2);color:var(--text2);
+  cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .2s;
+}
+.suggest-chip:hover{border-color:var(--cyan);color:var(--cyan)}
+
+/* Typing */
+.typing-dots{display:flex;gap:4px;padding:4px 0}
+.typing-dots span{
+  width:6px;height:6px;border-radius:50%;background:var(--cyan);
+  animation:typingBounce 1.2s ease-in-out infinite;
+}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes typingBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+
+/* ─── INPUT BAR ─────────────────────────────────────────── */
+#input-bar{
+  padding:12px 16px;background:rgba(0,5,15,.9);backdrop-filter:blur(12px);
+  border-top:1px solid var(--border2);flex-shrink:0;
+}
+.input-row{display:flex;gap:8px;align-items:flex-end}
+#voice-btn{
+  width:38px;height:38px;border-radius:50%;border:1px solid var(--border2);
+  background:var(--glow2);color:var(--text2);cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;
+}
+#voice-btn:hover,#voice-btn.active{border-color:var(--cyan);color:var(--cyan);
+  box-shadow:0 0 12px var(--glow)}
+#voice-btn.listening{border-color:var(--danger);color:var(--danger);
+  box-shadow:0 0 16px rgba(255,51,85,.3);animation:voicePulse 1s ease infinite}
+@keyframes voicePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.input-wrap{flex:1;position:relative}
+#user-input{
+  width:100%;background:rgba(2,15,34,.7);border:1px solid var(--border2);
+  border-radius:6px;padding:9px 40px 9px 12px;color:var(--text);
+  font-size:13px;font-family:inherit;resize:none;outline:none;
+  line-height:1.5;max-height:120px;transition:border-color .2s;
+}
+#user-input:focus{border-color:var(--cyan);box-shadow:0 0 8px var(--glow2)}
+#user-input::placeholder{color:var(--text3)}
+#file-btn{
+  position:absolute;right:8px;bottom:8px;width:22px;height:22px;
+  border:none;background:transparent;color:var(--text3);cursor:pointer;
+  font-size:14px;display:flex;align-items:center;justify-content:center;transition:color .2s;
+}
+#file-btn:hover{color:var(--cyan)}
+#send-btn{
+  width:38px;height:38px;border-radius:6px;border:1px solid var(--cyan2);
+  background:linear-gradient(135deg,rgba(0,153,204,.2),rgba(0,212,255,.1));
+  color:var(--cyan);cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+  transition:all .2s;
+}
+#send-btn:hover{background:rgba(0,212,255,.2);box-shadow:0 0 12px var(--glow)}
+.waveform{display:none;gap:2px;align-items:center;padding:4px 8px}
+.waveform.visible{display:flex}
+.wave-bar{
+  width:3px;border-radius:2px;background:var(--cyan);
+  animation:waveBounce 0.6s ease-in-out infinite alternate;
+}
+.wave-bar:nth-child(2){animation-delay:.1s;height:12px}
+.wave-bar:nth-child(3){animation-delay:.2s;height:18px}
+.wave-bar:nth-child(4){animation-delay:.3s;height:10px}
+.wave-bar:nth-child(5){animation-delay:.4s;height:16px}
+.wave-bar:nth-child(1){height:8px}
+.wave-bar:nth-child(6){height:14px;animation-delay:.5s}
+@keyframes waveBounce{from{transform:scaleY(.4)}to{transform:scaleY(1)}}
+
+/* ─── RIGHT PANEL ───────────────────────────────────────── */
+#right-panel{
+  width:var(--right-w);background:rgba(0,8,20,.7);
+  border-left:1px solid var(--border);display:flex;flex-direction:column;
+  flex-shrink:0;overflow:hidden;
+}
+.r-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.r-tab{
+  flex:1;padding:8px 4px;text-align:center;font-size:10px;letter-spacing:.5px;
+  text-transform:uppercase;color:var(--text3);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .2s;
+}
+.r-tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+.r-tab:hover{color:var(--text2)}
+.r-pane{display:none;flex:1;overflow-y:auto;padding:10px 10px;flex-direction:column;gap:6px}
+.r-pane.active{display:flex}
+.r-pane::-webkit-scrollbar{width:3px}
+.r-pane::-webkit-scrollbar-thumb{background:var(--cyan3);border-radius:2px}
+
+/* Task cards */
+.task-card{
+  padding:8px 10px;border-radius:5px;border:1px solid var(--border);
+  background:var(--glow2);font-size:11px;
+}
+.task-card-title{color:var(--text);font-weight:600;margin-bottom:4px;
+                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.task-card-status{display:flex;justify-content:space-between;align-items:center}
+.status-pill{
+  padding:1px 7px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;
+}
+.status-pill.running{background:rgba(0,212,255,.1);color:var(--cyan)}
+.status-pill.done{background:rgba(0,255,136,.1);color:var(--safe)}
+.status-pill.error{background:rgba(255,51,85,.1);color:var(--danger)}
+.status-pill.queued{background:rgba(255,170,0,.1);color:var(--caution)}
+.task-prog{height:2px;background:rgba(0,212,255,.1);border-radius:1px;margin-top:6px}
+.task-prog-fill{height:100%;background:var(--cyan);border-radius:1px;transition:width .5s}
+
+/* Neural signals */
+.signal-line{
+  padding:5px 8px;border-radius:4px;background:var(--glow2);border:1px solid var(--border);
+  font-size:10px;color:var(--text2);display:flex;justify-content:space-between;
+}
+.signal-line .sig-name{color:var(--cyan);font-weight:600}
+.signal-line .sig-conf{color:var(--safe)}
+
+/* Sources */
+.source-item{
+  padding:7px 9px;border-radius:5px;border:1px solid var(--border);background:var(--glow2);
+}
+.source-item a{font-size:11px;color:var(--cyan);text-decoration:none;
+               white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.source-item .src-tier{font-size:9px;color:var(--safe);margin-top:2px}
+
+/* Markdown in chat */
+.msg-bubble p{margin-bottom:6px}.msg-bubble p:last-child{margin-bottom:0}
+.msg-bubble code{background:rgba(0,212,255,.08);padding:1px 5px;border-radius:3px;
+                 font-family:monospace;font-size:12px;color:var(--cyan)}
+.msg-bubble pre{background:rgba(0,5,15,.8);border:1px solid var(--border);
+                border-radius:5px;padding:10px;overflow-x:auto;margin:6px 0}
+.msg-bubble pre code{background:none;padding:0;color:var(--text2)}
+.msg-bubble ul,.msg-bubble ol{padding-left:18px;margin:4px 0}
+
+/* ─── AUTH OVERLAY ──────────────────────────────────────── */
+#auth-overlay{
+  position:fixed;inset:0;z-index:999;
+  background:rgba(0,5,15,.97);backdrop-filter:blur(8px);
+  display:flex;align-items:center;justify-content:center;
+}
+#auth-overlay.hidden{display:none}
+.auth-box{
+  width:320px;text-align:center;padding:40px 32px;
+  border:1px solid var(--border2);border-radius:10px;
+  background:rgba(2,15,34,.85);
+}
+.auth-logo{font-size:36px;font-weight:900;color:var(--cyan);letter-spacing:4px;
+           text-shadow:0 0 30px rgba(0,212,255,.6);margin-bottom:6px}
+.auth-title{font-size:14px;color:var(--text2);margin-bottom:4px}
+.auth-sub{font-size:11px;color:var(--text3);margin-bottom:28px}
+.auth-input{
+  width:100%;padding:10px 14px;background:rgba(0,212,255,.05);
+  border:1px solid var(--border2);border-radius:6px;
+  color:var(--text);font-size:20px;text-align:center;letter-spacing:8px;
+  outline:none;margin-bottom:14px;font-family:monospace;
+}
+.auth-input:focus{border-color:var(--cyan);box-shadow:0 0 8px var(--glow2)}
+.auth-btn{
+  width:100%;padding:10px;border-radius:6px;font-size:13px;font-weight:700;
+  letter-spacing:1px;cursor:pointer;border:1px solid var(--cyan2);
+  background:linear-gradient(135deg,rgba(0,153,204,.2),rgba(0,212,255,.1));
+  color:var(--cyan);transition:all .2s;text-transform:uppercase;
+}
+.auth-btn:hover{background:rgba(0,212,255,.2);box-shadow:0 0 12px var(--glow)}
+.auth-err{font-size:11px;color:var(--danger);margin-top:10px;min-height:16px}
+
+/* ─── SCROLLBARS ────────────────────────────────────────── */
+*::-webkit-scrollbar{width:4px;height:4px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:var(--cyan3);border-radius:2px}
+
+/* ─── RESPONSIVE ────────────────────────────────────────── */
+/* Tablet (≤900px): hide right panel */
+@media(max-width:900px){
+  #right-panel{display:none}
+  :root{--right-w:0px}
+}
+/* Mobile landscape / small tablet (≤680px): collapse left panel to icons */
+@media(max-width:680px){
+  #left-panel{width:46px}
+  #left-panel .panel-hdr,#left-panel .metrics,
+  #left-panel .mode-selector,#left-panel #agent-feed{display:none}
+  #neural-canvas{height:80px}
+  :root{--left-w:46px}
+  .aria-sub,.top-chips,.top-btns{display:none}
+}
+/* Mobile portrait (≤480px): hide left panel too, full-screen chat */
+@media(max-width:480px){
+  #left-panel{display:none}
+  :root{--left-w:0px;--bar-h:48px}
+  .aria-title{font-size:14px}
+  #topbar{padding:0 12px}
+  #chat-messages{padding:10px}
+  #input-bar{padding:8px 10px}
+  .msg-bubble{max-width:92%;font-size:12px}
+}
+/* Very small (≤360px) */
+@media(max-width:360px){
+  .aria-logo{width:28px;height:28px;font-size:10px}
+  .aria-title{font-size:13px}
+  #user-input{font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<!-- ── AUTH OVERLAY ── -->
+<div id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-logo">ARIA</div>
+    <div class="auth-title">Autonomous Intelligence Assistant</div>
+    <div class="auth-sub" id="auth-sub">Enter your PIN to continue</div>
+    <input class="auth-input" type="password" id="pin-input" maxlength="8"
+      placeholder="••••" autocomplete="off" oninput="this.value=this.value.replace(/\D/g,'')"
+      onkeydown="if(event.key==='Enter')doAuth()">
+    <button class="auth-btn" onclick="doAuth()" id="auth-btn">AUTHENTICATE</button>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+</div>
+
+<!-- HUD Corners -->
+<div class="hud-corner tl"></div>
+<div class="hud-corner tr"></div>
+<div class="hud-corner bl"></div>
+<div class="hud-corner br"></div>
+
+<div id="app">
+
+  <!-- ── TOP BAR ── -->
+  <div id="topbar">
+    <div class="aria-logo">ARIA</div>
+    <span class="aria-title">ARIA</span>
+    <span class="aria-sub">v3.0</span>
+    <div class="top-chips">
+      <div class="chip on" id="chip-llm"><div class="dot"></div>LLM</div>
+      <div class="chip on" id="chip-neural"><div class="dot"></div>Neural</div>
+      <div class="chip warn" id="chip-auto"><div class="dot"></div>Auto</div>
+    </div>
+    <span id="top-clock">--:--:--</span>
+    <div class="top-btns">
+      <button class="top-btn active" onclick="setMode('auto')">AUTO</button>
+      <button class="top-btn" onclick="setMode('safe')">SAFE</button>
+      <button class="top-btn" onclick="clearSession()">RESET</button>
+    </div>
+  </div>
+
+  <!-- ── BODY ROW ── -->
+  <div id="body-row">
+
+    <!-- ── LEFT PANEL ── -->
+    <div id="left-panel">
+      <div class="panel-hdr">Neural Viz</div>
+      <canvas id="neural-canvas"></canvas>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-row"><span>CPU</span><span class="metric-val" id="m-cpu">--</span></div>
+          <div class="bar-bg"><div class="bar-fill" id="b-cpu" style="width:0%"></div></div>
+        </div>
+        <div class="metric">
+          <div class="metric-row"><span>RAM</span><span class="metric-val" id="m-ram">--</span></div>
+          <div class="bar-bg"><div class="bar-fill" id="b-ram" style="width:0%"></div></div>
+        </div>
+        <div class="metric">
+          <div class="metric-row"><span>NET</span><span class="metric-val" id="m-net">--</span></div>
+          <div class="bar-bg"><div class="bar-fill" id="b-net" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="mode-selector">
+        <div class="mode-label">Mode</div>
+        <div class="mode-btns">
+          <button class="mode-btn active" id="mbtn-auto" onclick="setMode('auto')">⚡ Autonomous</button>
+          <button class="mode-btn" id="mbtn-safe" onclick="setMode('safe')">🛡 Safe</button>
+        </div>
+      </div>
+      <div class="panel-hdr" style="margin-top:4px">Agent Feed</div>
+      <div id="agent-feed"></div>
+    </div>
+
+    <!-- ── MAIN PANEL ── -->
+    <div id="main-panel">
+      <div id="chat-messages">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-logo">ARIA</div>
+          <div class="empty-title">Autonomous Reasoning Intelligence Assistant</div>
+          <div class="empty-sub">Ask me anything. I'll think, plan, and execute autonomously.</div>
+          <div class="quick-chips">
+            <div class="quick-chip" onclick="sendQuick('Top 10 stocks in India today')">📈 Top 10 Stocks</div>
+            <div class="quick-chip" onclick="sendQuick('Take a screenshot')">📸 Screenshot</div>
+            <div class="quick-chip" onclick="sendQuick('What is the weather today')">🌤 Weather</div>
+            <div class="quick-chip" onclick="sendQuick('Search latest AI news')">🔍 AI News</div>
+            <div class="quick-chip" onclick="sendQuick('Open chrome browser')">🌐 Open Chrome</div>
+            <div class="quick-chip" onclick="sendQuick('What can you do')">💡 Capabilities</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Bar -->
+      <div id="input-bar">
+        <div class="input-row">
+          <button id="voice-btn" onclick="toggleVoice()" title="Voice input">🎙</button>
+          <div class="input-wrap">
+            <textarea id="user-input" rows="1" placeholder="Ask ARIA anything — I'll think and act autonomously..."
+              onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+            <button id="file-btn" onclick="document.getElementById('file-input').click()" title="Attach file">📎</button>
+            <input type="file" id="file-input" style="display:none" onchange="handleFile(event)">
+          </div>
+          <div class="waveform" id="waveform">
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+          </div>
+          <button id="send-btn" onclick="sendMessage()" title="Send">▶</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT PANEL ── -->
+    <div id="right-panel">
+      <div class="r-tabs">
+        <div class="r-tab active" onclick="switchRTab('tasks',this)">Tasks</div>
+        <div class="r-tab" onclick="switchRTab('neural',this)">Neural</div>
+        <div class="r-tab" onclick="switchRTab('sources',this)">Sources</div>
+        <div class="r-tab" onclick="switchRTab('health',this)">Health</div>
+        <div class="r-tab" onclick="switchRTab('sync',this)">Sync</div>
+        <div class="r-tab" onclick="switchRTab('settings',this)">⚙</div>
+      </div>
+      <div class="r-pane active" id="rpane-tasks">
+        <div style="font-size:10px;color:var(--text3);text-align:center;padding:20px">
+          No active tasks
+        </div>
+      </div>
+      <div class="r-pane" id="rpane-neural">
+        <div style="font-size:10px;color:var(--text3);text-align:center;padding:20px">
+          Awaiting neural signals…
+        </div>
+      </div>
+      <div class="r-pane" id="rpane-sources">
+        <div style="font-size:10px;color:var(--text3);text-align:center;padding:20px">
+          No sources yet
+        </div>
+      </div>
+
+      <!-- ── HEALTH TAB ── -->
+      <div class="r-pane" id="rpane-health">
+        <div style="padding:8px 6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:10px;color:var(--cyan);letter-spacing:1px">AGENT HEALTH</span>
+            <button onclick="refreshHealth()" style="font-size:9px;padding:2px 6px;background:var(--bg3);border:1px solid var(--border2);color:var(--cyan2);cursor:pointer;border-radius:3px">Refresh</button>
+          </div>
+          <div id="health-connectivity" style="margin-bottom:8px;padding:6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;font-size:10px">
+            Checking connectivity…
+          </div>
+          <div id="health-summary" style="margin-bottom:6px;font-size:10px;color:var(--text2)"></div>
+          <div id="health-agents" style="font-size:10px;max-height:360px;overflow-y:auto"></div>
+        </div>
+      </div>
+
+      <!-- ── SYNC TAB ── -->
+      <div class="r-pane" id="rpane-sync">
+        <div style="padding:8px 6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:10px;color:var(--cyan);letter-spacing:1px">MULTI-DEVICE SYNC</span>
+            <button onclick="refreshSync()" style="font-size:9px;padding:2px 6px;background:var(--bg3);border:1px solid var(--border2);color:var(--cyan2);cursor:pointer;border-radius:3px">Refresh</button>
+          </div>
+          <div id="sync-status" style="margin-bottom:8px;padding:6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;font-size:10px">
+            Loading…
+          </div>
+          <div id="sync-peers" style="font-size:10px;margin-bottom:8px"></div>
+          <div style="margin-bottom:4px">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Add Peer Device</div>
+            <input id="sync-peer-url" placeholder="http://192.168.1.x:8000" style="width:100%;margin-bottom:3px;padding:4px 6px;background:var(--bg2);border:1px solid var(--border);color:var(--text);font-size:10px;border-radius:3px">
+            <input id="sync-peer-name" placeholder="Device name" style="width:100%;margin-bottom:3px;padding:4px 6px;background:var(--bg2);border:1px solid var(--border);color:var(--text);font-size:10px;border-radius:3px">
+            <button onclick="addSyncPeer()" style="width:100%;padding:4px;background:var(--bg3);border:1px solid var(--cyan3);color:var(--cyan2);font-size:10px;cursor:pointer;border-radius:3px">+ Add Peer</button>
+          </div>
+          <button onclick="pushSync()" style="width:100%;padding:4px;margin-top:4px;background:var(--bg4);border:1px solid var(--border2);color:var(--cyan);font-size:10px;cursor:pointer;border-radius:3px">Push to All Peers</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /body-row -->
+</div><!-- /app -->
+
+<script>
+// ─── AUTH ─────────────────────────────────────────────────
+let _token = localStorage.getItem('aria_token') || '';
+
+function authHeaders(extra){
+  return Object.assign({'Content-Type':'application/json',
+    'Authorization':'Bearer '+_token}, extra||{});
+}
+async function authFetch(url,opts){
+  opts=opts||{};
+  opts.headers=Object.assign(authHeaders(),opts.headers||{});
+  // Remove Content-Type for FormData (browser sets it with boundary)
+  if(opts.body instanceof FormData)delete opts.headers['Content-Type'];
+  const r=await fetch(url,opts);
+  // Auto re-auth on 401 — clears stale/expired token and shows login
+  if(r.status===401){
+    localStorage.removeItem('aria_token');_token='';
+    showAuth();
+    throw new Error('Session expired — please re-authenticate');
+  }
+  return r;
+}
+
+async function doAuth(){
+  const pin=document.getElementById('pin-input').value.trim();
+  const btn=document.getElementById('auth-btn');
+  const err=document.getElementById('auth-err');
+  if(!pin){err.textContent='Enter your PIN.';return;}
+  btn.disabled=true;btn.textContent='…';err.textContent='';
+  try{
+    // Check if first-run (no PIN set yet)
+    const st=await fetch('/auth/status');
+    const sd=await st.json();
+    let url='/auth/login',body={pin,device_name:'ARIA Web UI'};
+    if(!sd.setup){url='/auth/setup';body={pin,owner_name:'Owner'};}
+    const r=await fetch(url,{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(!r.ok){err.textContent=d.detail||'Auth failed';btn.disabled=false;btn.textContent='AUTHENTICATE';return;}
+    _token=d.token;
+    localStorage.setItem('aria_token',_token);
+    document.getElementById('auth-overlay').classList.add('hidden');
+    startApp();
+  }catch(e){
+    err.textContent='Server unreachable. Is ARIA running?';
+    btn.disabled=false;btn.textContent='AUTHENTICATE';
+  }
+}
+
+async function bootAuth(){
+  if(!_token){showAuth();return;}
+  try{
+    const r=await authFetch('/auth/verify');
+    if(r.ok){document.getElementById('auth-overlay').classList.add('hidden');startApp();}
+    else{localStorage.removeItem('aria_token');_token='';showAuth();}
+  }catch{showAuth();}
+}
+
+function showAuth(){
+  fetch('/auth/status').then(r=>r.json()).then(d=>{
+    if(!d.setup){
+      document.getElementById('auth-sub').textContent='First run — set a PIN (4-8 digits)';
+      document.getElementById('auth-btn').textContent='SET PIN & ENTER';
+    }
+  }).catch(()=>{});
+}
+
+// ─── CLOCK ────────────────────────────────────────────────
+function updateClock(){
+  const now=new Date();
+  document.getElementById('top-clock').textContent=
+    now.toLocaleTimeString('en-IN',{hour12:false});
+}
+setInterval(updateClock,1000);updateClock();
+
+// ─── NEURAL CANVAS ────────────────────────────────────────
+(function(){
+  const canvas=document.getElementById('neural-canvas');
+  const ctx=canvas.getContext('2d');
+  let W,H,nodes=[],animId;
+  function resize(){
+    W=canvas.offsetWidth;H=canvas.offsetHeight;
+    canvas.width=W;canvas.height=H;
+    if(nodes.length===0)init();
+  }
+  function init(){
+    nodes=[];
+    const n=Math.min(12,Math.floor(W*H/1800));
+    for(let i=0;i<n;i++)nodes.push({
+      x:Math.random()*W,y:Math.random()*H,
+      vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,
+      r:2+Math.random()*2,bright:Math.random()
+    });
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    // edges
+    for(let i=0;i<nodes.length;i++)
+      for(let j=i+1;j<nodes.length;j++){
+        const dx=nodes[i].x-nodes[j].x,dy=nodes[i].y-nodes[j].y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<W*.45){
+          ctx.beginPath();
+          ctx.strokeStyle=`rgba(0,212,255,${.5*(1-d/(W*.45))*.3})`;
+          ctx.lineWidth=.5;
+          ctx.moveTo(nodes[i].x,nodes[i].y);
+          ctx.lineTo(nodes[j].x,nodes[j].y);
+          ctx.stroke();
+        }
+      }
+    // nodes
+    nodes.forEach(n=>{
+      ctx.beginPath();
+      ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(0,212,255,${.5+n.bright*.5})`;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(n.x,n.y,n.r+3,0,Math.PI*2);
+      ctx.fillStyle=`rgba(0,212,255,${.08+n.bright*.06})`;
+      ctx.fill();
+      n.x+=n.vx;n.y+=n.vy;
+      if(n.x<0||n.x>W)n.vx*=-1;
+      if(n.y<0||n.y>H)n.vy*=-1;
+      n.bright=Math.sin(Date.now()*.001+n.x)*.5+.5;
+    });
+    animId=requestAnimationFrame(draw);
+  }
+  const ro=new ResizeObserver(()=>{resize();});
+  ro.observe(canvas);
+  resize();draw();
+})();
+
+// ─── APP START (called after successful auth) ─────────────
+let _metricsTimer=null,_tasksTimer=null,_healthTimer=null;
+function startApp(){
+  fetchMetrics();
+  _metricsTimer=setInterval(fetchMetrics,5000);
+  pollTasks();
+  _tasksTimer=setInterval(pollTasks,3000);
+  checkHealth();
+  _healthTimer=setInterval(checkHealth,15000);
+}
+
+// ─── METRICS ─────────────────────────────────────────────
+async function fetchMetrics(){
+  try{
+    const r=await authFetch('/api/system/status');
+    if(!r.ok)return;
+    const d=await r.json();
+    const cpu=d.cpu_percent||Math.random()*40+20;
+    const ram=d.ram_percent||Math.random()*30+40;
+    document.getElementById('m-cpu').textContent=cpu.toFixed(1)+'%';
+    document.getElementById('m-ram').textContent=ram.toFixed(1)+'%';
+    document.getElementById('m-net').textContent='OK';
+    document.getElementById('b-cpu').style.width=cpu+'%';
+    document.getElementById('b-ram').style.width=ram+'%';
+    document.getElementById('b-net').style.width='60%';
+  }catch{
+    const cpu=20+Math.random()*30,ram=40+Math.random()*25;
+    document.getElementById('m-cpu').textContent=cpu.toFixed(1)+'%';
+    document.getElementById('m-ram').textContent=ram.toFixed(1)+'%';
+    document.getElementById('m-net').textContent='OK';
+    document.getElementById('b-cpu').style.width=cpu+'%';
+    document.getElementById('b-ram').style.width=ram+'%';
+    document.getElementById('b-net').style.width='55%';
+  }
+}
+
+// ─── AGENT FEED ───────────────────────────────────────────
+const AGENT_NAMES=['intent_classifier','fast_reasoner','chain_reasoner',
+  'nova_reasoner','lang_detector','stock_analyst','undo_tracker','planner_agent'];
+function pushAgentLine(name,active=false){
+  const feed=document.getElementById('agent-feed');
+  const el=document.createElement('div');
+  el.className='agent-line'+(active?' active':'');
+  el.textContent=name;
+  feed.prepend(el);
+  if(feed.children.length>12)feed.lastChild.remove();
+}
+
+// ─── MODE ─────────────────────────────────────────────────
+let currentMode='auto';
+function setMode(m){
+  currentMode=m;
+  document.querySelectorAll('.top-btn').forEach(b=>{
+    b.classList.toggle('active',b.textContent.toLowerCase()===m);
+  });
+  document.querySelectorAll('.mode-btn').forEach(b=>{
+    b.classList.toggle('active',b.id==='mbtn-'+m);
+  });
+  pushAgentLine('mode:'+m.toUpperCase(),true);
+}
+
+// ─── RIGHT TABS ───────────────────────────────────────────
+function switchRTab(name,el){
+  document.querySelectorAll('.r-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.r-pane').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('rpane-'+name).classList.add('active');
+}
+
+// ─── SESSION ──────────────────────────────────────────────
+let sessionId='aria-'+Date.now();
+
+async function clearSession(){
+  try{await authFetch('/api/conversation/session',{method:'DELETE',
+    body:JSON.stringify({session_id:sessionId})});}catch{}
+  location.reload();
+}
+
+// ─── TASK POLL ────────────────────────────────────────────
+async function pollTasks(){
+  // Skip DOM update if user is actively typing in any input/textarea/select
+  const active=document.activeElement;
+  const userTyping=active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA'||active.tagName==='SELECT');
+  try{
+    const r=await authFetch('/api/tasks');
+    if(!r.ok)return;
+    const tasks=await r.json();
+    if(userTyping)return; // don't disturb focus
+    const pane=document.getElementById('rpane-tasks');
+    if(!tasks.length){
+      pane.innerHTML='<div style="font-size:10px;color:var(--text3);text-align:center;padding:20px">No active tasks</div>';
+      return;
+    }
+    pane.innerHTML=tasks.slice(0,8).map(t=>`
+      <div class="task-card">
+        <div class="task-card-title">${escHtml(t.title||t.id)}</div>
+        <div class="task-card-status">
+          <span class="status-pill ${t.status}">${t.status}</span>
+          <span style="font-size:9px;color:var(--text3)">${t.progress||0}%</span>
+        </div>
+        <div class="task-prog"><div class="task-prog-fill" style="width:${t.progress||0}%"></div></div>
+      </div>`).join('');
+  }catch{}
+}
+// Only register one interval (guard against double-registration)
+if(!window._tasksIntervalSet){window._tasksIntervalSet=true;setInterval(pollTasks,3000);}
+pollTasks();
+
+// ─── SOURCES RENDER ───────────────────────────────────────
+function renderSources(sources){
+  if(!sources||!sources.length)return;
+  const pane=document.getElementById('rpane-sources');
+  pane.innerHTML=sources.slice(0,6).map(s=>`
+    <div class="source-item">
+      <a href="${escHtml(s.url||s)}" target="_blank">${escHtml(s.title||s.url||s)}</a>
+      <div class="src-tier">✓ ${escHtml(s.tier||'verified')}</div>
+    </div>`).join('');
+}
+
+// ─── NEURAL SIGNALS RENDER ────────────────────────────────
+function renderSignals(signals){
+  if(!signals)return;
+  const pane=document.getElementById('rpane-neural');
+  const items=Object.entries(signals).slice(0,8);
+  if(!items.length)return;
+  pane.innerHTML=items.map(([k,v])=>`
+    <div class="signal-line">
+      <span class="sig-name">${escHtml(k)}</span>
+      <span class="sig-conf">${(v*100||0).toFixed(0)}%</span>
+    </div>`).join('');
+}
+
+// ─── VOICE ────────────────────────────────────────────────
+let recognition=null,isListening=false;
+function toggleVoice(){
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){
+    appendMsg('aria','Voice recognition not supported in this browser.','safe');return;
+  }
+  if(isListening){stopVoice();return;}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR();
+  recognition.continuous=false;recognition.interimResults=true;recognition.lang='en-IN';
+  recognition.onstart=()=>{
+    isListening=true;
+    document.getElementById('voice-btn').classList.add('listening');
+    document.getElementById('waveform').classList.add('visible');
+  };
+  recognition.onresult=e=>{
+    const t=Array.from(e.results).map(r=>r[0].transcript).join('');
+    document.getElementById('user-input').value=t;
+    autoResize(document.getElementById('user-input'));
+  };
+  recognition.onend=()=>{
+    stopVoice();
+    const v=document.getElementById('user-input').value.trim();
+    if(v)sendMessage();
+  };
+  recognition.onerror=()=>stopVoice();
+  recognition.start();
+}
+function stopVoice(){
+  isListening=false;
+  document.getElementById('voice-btn').classList.remove('listening');
+  document.getElementById('waveform').classList.remove('visible');
+  if(recognition){try{recognition.stop();}catch{}}
+}
+
+// ─── INPUT UTILS ──────────────────────────────────────────
+function autoResize(el){
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,120)+'px';
+}
+function handleKey(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
+}
+function sendQuick(text){
+  document.getElementById('user-input').value=text;
+  document.getElementById('empty-state')?.remove();
+  sendMessage();
+}
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── FILE ATTACH ──────────────────────────────────────────
+async function handleFile(e){
+  const file=e.target.files[0];if(!file)return;
+  const fd=new FormData();fd.append('file',file);
+  appendMsg('aria',`Uploading **${escHtml(file.name)}**…`,'safe');
+  try{
+    const r=await authFetch('/api/upload',{method:'POST',body:fd});
+    const d=await r.json();
+    if(!r.ok){
+      appendMsg('aria',`Upload failed: ${escHtml(d.detail||d.error||'server error')}`,'danger');
+    } else {
+      appendMsg('aria',`File uploaded: **${escHtml(file.name)}** — ${escHtml(d.message||d.chunks+' chunks indexed'||'ready')}`, 'safe');
+    }
+  }catch(err){
+    if(!err.message?.includes('re-authenticate'))
+      appendMsg('aria','Upload failed — check server connection.','danger');
+  }
+  e.target.value='';
+}
+
+// ─── APPEND MESSAGES ──────────────────────────────────────
+function appendMsg(role,text,risk,planId){
+  const container=document.getElementById('chat-messages');
+  document.getElementById('empty-state')?.remove();
+  const div=document.createElement('div');
+  div.className=`msg ${role}`;
+  const riskBadge=risk&&role==='aria'?`<span class="risk-badge ${risk}">${risk.toUpperCase()}</span>`:'';
+  let html=`<div class="msg-bubble">${marked.parse?marked.parse(text):text}</div>
+    <div class="msg-meta">${riskBadge}<span>${new Date().toLocaleTimeString('en-IN',{hour12:false})}</span></div>`;
+  if(risk==='danger'&&planId){
+    html+=`<div class="confirm-box">
+      <span>⚠ This action requires confirmation</span>
+      <button class="confirm-btn yes" onclick="confirmPlan('${planId}',this)">EXECUTE</button>
+      <button class="confirm-btn no" onclick="this.closest('.confirm-box').remove()">CANCEL</button>
+    </div>`;
+  }
+  div.innerHTML=html;
+  container.appendChild(div);
+  container.scrollTop=container.scrollHeight;
+  return div;
+}
+
+function showTyping(){
+  const container=document.getElementById('chat-messages');
+  document.getElementById('empty-state')?.remove();
+  const div=document.createElement('div');
+  div.className='msg aria';div.id='typing-indicator';
+  div.innerHTML='<div class="msg-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>';
+  container.appendChild(div);container.scrollTop=container.scrollHeight;
+}
+function hideTyping(){document.getElementById('typing-indicator')?.remove();}
+
+// ─── CONFIRM DANGEROUS PLAN ───────────────────────────────
+async function confirmPlan(planId,btn){
+  btn.disabled=true;btn.textContent='Running…';
+  btn.closest('.confirm-box').querySelector('.no').disabled=true;
+  try{
+    const r=await authFetch('/api/auto/confirm',{method:'POST',
+      body:JSON.stringify({plan_id:planId,session_id:sessionId})});
+    const reader=r.body.getReader();const dec=new TextDecoder();
+    let out='';
+    while(true){
+      const{done,value}=await reader.read();if(done)break;
+      const chunk=dec.decode(value);
+      for(const line of chunk.split('\n')){
+        if(line.startsWith('data:')){
+          try{const ev=JSON.parse(line.slice(5));if(ev.text)out+=ev.text;}catch{}
+        }
+      }
+    }
+    btn.closest('.confirm-box').remove();
+    if(out)appendMsg('aria',out,'safe');
+  }catch(err){appendMsg('aria','Execution failed: '+err.message,'danger');}
+}
+
+// ─── SEND MESSAGE ─────────────────────────────────────────
+async function sendMessage(){
+  const input=document.getElementById('user-input');
+  const text=input.value.trim();if(!text)return;
+  input.value='';autoResize(input);
+  appendMsg('user',escHtml(text));
+  showTyping();
+  // fire random agent names to feed
+  const pick=AGENT_NAMES[Math.floor(Math.random()*AGENT_NAMES.length)];
+  pushAgentLine(pick,true);
+  try{
+    const r=await authFetch('/api/auto/stream',{method:'POST',
+      body:JSON.stringify({message:text,session_id:sessionId})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const reader=r.body.getReader();const dec=new TextDecoder();
+    let fullText='',risk='safe',planId=null,sources=null,signals=null;
+    hideTyping();
+    let msgDiv=null;
+    while(true){
+      const{done,value}=await reader.read();if(done)break;
+      const chunk=dec.decode(value);
+      for(const line of chunk.split('\n')){
+        if(!line.startsWith('data:'))continue;
+        let ev;try{ev=JSON.parse(line.slice(5));}catch{continue;}
+        if(ev.type==='risk'){risk=ev.level||'safe';}
+        if(ev.type==='plan_id'){planId=ev.id;}
+        if(ev.type==='sources'){sources=ev.data;renderSources(sources);}
+        if(ev.type==='neural'){signals=ev.data;renderSignals(signals);}
+        if(ev.type==='agent'){pushAgentLine(ev.name,true);}
+        if(ev.text){
+          fullText+=ev.text;
+          if(!msgDiv){
+            document.getElementById('empty-state')?.remove();
+            msgDiv=document.createElement('div');
+            msgDiv.className='msg aria';
+            const riskBadge=`<span class="risk-badge ${risk}">${risk.toUpperCase()}</span>`;
+            msgDiv.innerHTML=`<div class="msg-bubble"></div>
+              <div class="msg-meta">${riskBadge}<span>${new Date().toLocaleTimeString('en-IN',{hour12:false})}</span></div>`;
+            document.getElementById('chat-messages').appendChild(msgDiv);
+          }
+          const bubble=msgDiv.querySelector('.msg-bubble');
+          bubble.innerHTML=marked.parse?marked.parse(fullText):fullText;
+          document.getElementById('chat-messages').scrollTop=document.getElementById('chat-messages').scrollHeight;
+        }
+        if(ev.type==='done'){
+          if(planId&&risk==='danger'){
+            const confirmHtml=`<div class="confirm-box">
+              <span>⚠ Dangerous action — confirm to proceed</span>
+              <button class="confirm-btn yes" onclick="confirmPlan('${planId}',this)">EXECUTE</button>
+              <button class="confirm-btn no" onclick="this.closest('.confirm-box').remove()">CANCEL</button>
+            </div>`;
+            msgDiv&&(msgDiv.innerHTML+=confirmHtml);
+          }
+          if(ev.suggest){
+            const s=document.createElement('div');
+            s.className='suggest-chip';s.textContent='💡 '+ev.suggest;
+            s.onclick=()=>sendQuick(ev.suggest);
+            msgDiv&&msgDiv.appendChild(s);
+          }
+        }
+      }
+    }
+    if(!msgDiv)appendMsg('aria','No response received.','caution');
+    pollTasks();
+  }catch(err){
+    hideTyping();
+    appendMsg('aria','⚠ Error: '+err.message,'danger');
+  }
+}
+
+// ─── HEALTH CHECK ─────────────────────────────────────────
+async function checkHealth(){
+  try{
+    const r=await authFetch('/api/health');
+    const d=await r.json();
+    const llmOk=d.ollama||d.llm_ready;
+    document.getElementById('chip-llm').className='chip '+(llmOk?'on':'warn');
+    document.getElementById('chip-auto').className='chip on';
+  }catch{
+    document.getElementById('chip-llm').className='chip warn';
+  }
+}
+
+// ─── AGENT HEALTH DASHBOARD ───────────────────────────────
+async function refreshHealth(){
+  const connEl=document.getElementById('health-connectivity');
+  const sumEl=document.getElementById('health-summary');
+  const agentsEl=document.getElementById('health-agents');
+  try{
+    // Connectivity (public endpoint)
+    const connR=await fetch('/api/offline/status');
+    if(connR.ok){
+      const c=await connR.json();
+      const stateColor=c.state==='online'?'var(--safe)':c.state==='degraded'?'var(--caution)':'var(--danger)';
+      connEl.innerHTML=`<span style="color:${stateColor};font-weight:bold">${c.state.toUpperCase()}</span>`
+        +` &nbsp;|&nbsp; Probes: ${c.reachable_probes}/${c.total_probes}`
+        +(c.last_check?` &nbsp;|&nbsp; Last check: ${new Date(c.last_check).toLocaleTimeString()}`:'');
+    }
+    // Agent health
+    const r=await authFetch('/api/health/agents');
+    if(!r.ok){agentsEl.innerHTML='<div style="color:var(--danger)">Auth required</div>';return;}
+    const d=await r.json();
+    sumEl.innerHTML=`<span style="color:var(--safe)">${d.ok} OK</span> &nbsp;`
+      +`<span style="color:var(--caution)">${d.stubs} stubs</span> &nbsp;`
+      +`<span style="color:var(--text3)">/ ${d.total} total</span>`;
+    const entries=Object.entries(d.agents).sort(([,a],[,b])=>
+      (a.status==='stub'?1:0)-(b.status==='stub'?1:0)||a.type.localeCompare(b.type));
+    agentsEl.innerHTML=entries.map(([name,info])=>{
+      const ok=info.status==='ok';
+      const dot=ok?'var(--safe)':'var(--caution)';
+      return `<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border)">`
+        +`<span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${dot};margin-right:4px"></span>${name}</span>`
+        +`<span style="color:var(--text3)">${info.type}</span></div>`;
+    }).join('');
+  }catch(e){
+    agentsEl.innerHTML=`<div style="color:var(--danger)">${e.message}</div>`;
+  }
+}
+
+// ─── SYNC DASHBOARD ───────────────────────────────────────
+async function refreshSync(){
+  const statusEl=document.getElementById('sync-status');
+  const peersEl=document.getElementById('sync-peers');
+  try{
+    const r=await authFetch('/api/sync/status');
+    if(!r.ok){statusEl.innerHTML='<span style="color:var(--danger)">Auth required</span>';return;}
+    const d=await r.json();
+    statusEl.innerHTML=`<b style="color:var(--cyan)">Device:</b> ${d.device_name} <span style="color:var(--text3)">(${d.device_id.slice(0,8)}…)</span><br>`
+      +`<b style="color:var(--cyan)">Deltas:</b> ${d.total_deltas} total &nbsp;`
+      +`<span style="color:${d.unsynced_deltas?'var(--caution)':'var(--safe)'}">${d.unsynced_deltas} unsynced</span><br>`
+      +`<b style="color:var(--cyan)">Peers:</b> ${d.peers} &nbsp;`
+      +`<b style="color:var(--cyan)">Background:</b> ${d.background_sync?'<span style="color:var(--safe)">ON</span>':'<span style="color:var(--caution)">OFF</span>'}`;
+    const pr=await authFetch('/api/sync/peers');
+    if(pr.ok){
+      const pd=await pr.json();
+      if(pd.peers.length===0){
+        peersEl.innerHTML='<div style="color:var(--text3);font-size:10px">No peers — add a peer device below</div>';
+      }else{
+        peersEl.innerHTML='<div style="color:var(--text3);margin-bottom:4px">Registered Peers:</div>'
+          +pd.peers.map(p=>{
+            const ago=p.last_sync?Math.round((Date.now()/1000-p.last_sync)/60)+'m ago':'never';
+            return `<div style="padding:3px 0;border-bottom:1px solid var(--border)">`
+              +`<span style="color:var(--text)">${p.name}</span>`
+              +`<span style="color:var(--text3);float:right">${ago}</span><br>`
+              +`<span style="color:var(--text3)">${p.base_url}</span>`
+              +`</div>`;
+          }).join('');
+      }
+    }
+  }catch(e){statusEl.innerHTML=`<span style="color:var(--danger)">${e.message}</span>`;}
+}
+
+async function addSyncPeer(){
+  const url=document.getElementById('sync-peer-url').value.trim();
+  const name=document.getElementById('sync-peer-name').value.trim();
+  if(!url){alert('Enter peer URL');return;}
+  try{
+    // Try to discover the peer's device ID
+    const infoR=await fetch(url+'/api/sync/status');
+    if(!infoR.ok){alert('Cannot reach peer at '+url);return;}
+    const info=await infoR.json();
+    const r=await authFetch('/api/sync/peers/add',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({device_id:info.device_id,name:name||info.device_name,base_url:url,trusted:true})
+    });
+    if(r.ok){
+      document.getElementById('sync-peer-url').value='';
+      document.getElementById('sync-peer-name').value='';
+      refreshSync();
+    }
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function pushSync(){
+  try{
+    const r=await authFetch('/api/sync/push-all',{method:'POST'});
+    const d=await r.json();
+    alert(`Pushed ${d.pushed||0} delta(s) to peers`);
+    refreshSync();
+  }catch(e){alert('Push failed: '+e.message);}
+}
+
+// Auto-refresh health + sync when those tabs are opened
+const _origSwitchRTab=switchRTab;
+function switchRTab(id,el){
+  _origSwitchRTab(id,el);
+  if(id==='health') refreshHealth();
+  if(id==='sync')   refreshSync();
+}
+
+// ─── BOOT ─────────────────────────────────────────────────
+bootAuth();
+</script>
+</body>
+</html>

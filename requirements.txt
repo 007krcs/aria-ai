@@ -1,0 +1,259 @@
+# ============================================================
+# ARIA — Adaptive Reasoning Intelligence Architecture
+# Auto-generated from pip freeze + manual annotations
+# Last updated: 2026-04-01
+# ============================================================
+
+# --- Core web framework ---
+fastapi==0.135.2
+uvicorn==0.42.0
+starlette==1.0.0
+python-multipart==0.0.22
+websockets==16.0
+
+# --- HTTP clients ---
+requests==2.33.1
+httpx==0.28.1
+httpcore==1.0.9
+curl_cffi==0.13.0
+
+# --- Data validation ---
+pydantic==2.12.5
+pydantic-settings==2.13.1
+pydantic_core==2.41.5
+annotated-types==0.7.0
+annotated-doc==0.0.4
+typing-inspection==0.4.2
+typing_extensions==4.15.0
+
+# --- LLM / AI core ---
+torch==2.11.0
+sentence-transformers==5.3.0
+transformers==5.4.0
+tokenizers==0.22.2
+safetensors==0.7.0
+huggingface_hub==1.8.0
+hf-xet==1.4.3
+onnxruntime==1.24.4
+
+# --- Vector database (long-term memory) ---
+chromadb==1.5.5
+mmh3==5.2.1
+PyPika==0.51.1
+orjson==3.11.8
+overrides==7.7.0
+
+# --- OpenTelemetry (chromadb tracing) ---
+opentelemetry-api==1.40.0
+opentelemetry-sdk==1.40.0
+opentelemetry-exporter-otlp-proto-common==1.40.0
+opentelemetry-exporter-otlp-proto-grpc==1.40.0
+opentelemetry-proto==1.40.0
+opentelemetry-semantic-conventions==0.61b0
+grpcio==1.80.0
+googleapis-common-protos==1.73.1
+kubernetes==35.0.0
+
+# --- Numerical / scientific ---
+numpy==2.4.4
+scipy==1.17.1
+pandas==3.0.2
+scikit-learn==1.8.0
+joblib==1.5.3
+threadpoolctl==3.6.0
+sympy==1.14.0
+mpmath==1.3.0
+
+# --- Financial data & technical analysis ---
+yfinance==1.2.0
+ta==0.11.0
+multitasking==0.0.12
+vaderSentiment==3.3.2
+
+# --- Web scraping & parsing ---
+beautifulsoup4==4.14.3
+soupsieve==2.8.3
+lxml==6.0.2
+ddgs==9.12.0                # DuckDuckGo search (last-resort fallback)
+
+# --- Document processing ---
+Pillow==12.1.1
+peewee==4.0.3
+
+# --- Browser automation ---
+selenium==4.41.0
+webdriver-manager==4.0.2
+trio==0.33.0
+trio-websocket==0.12.2
+wsproto==1.3.2
+outcome==1.3.0.post0
+sortedcontainers==2.4.0
+PySocks==1.7.1
+
+# --- System / OS utilities ---
+psutil==7.2.2
+pyperclip==1.11.0
+rich==14.3.3
+colorama==0.4.6
+Pygments==2.20.0
+
+# --- Config / environment ---
+python-dotenv==1.2.2
+PyYAML==6.0.3
+packaging==26.0
+platformdirs==4.9.4
+
+# --- Data serialization ---
+protobuf==6.33.6
+flatbuffers==25.12.19
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+referencing==0.37.0
+rpds-py==0.30.0
+attrs==26.1.0
+
+# --- Async / concurrency ---
+anyio==4.12.1
+sniffio==1.3.1
+watchfiles==1.1.1
+httptools==0.7.1
+
+# --- Date / time ---
+python-dateutil==2.9.0.post0
+pytz==2026.1.post1
+tzdata==2025.3
+six==1.17.0
+
+# --- Security ---
+bcrypt==5.0.0
+certifi==2026.1.4
+cffi==2.0.0
+pycparser==3.0
+oauthlib==3.3.1
+requests-oauthlib==2.0.0
+
+# --- CLI / terminal ---
+typer==0.24.1
+shellingham==1.5.4
+click==8.3.1
+markdown-it-py==4.0.0
+mdurl==0.1.2
+
+# --- ML utilities ---
+tqdm==4.67.3
+regex==2026.3.32
+filelock==3.25.2
+fsspec==2026.3.0
+networkx==3.6.1
+
+# --- Build tools ---
+build==1.4.2
+pyproject_hooks==1.2.0
+importlib_metadata==8.7.1
+importlib_resources==6.5.2
+zipp==3.23.0
+
+# --- Misc utilities ---
+frozendict==2.4.7
+durationpy==0.10
+pybase64==1.4.3
+defusedxml==0.7.1
+tenacity==9.1.4
+websocket-client==1.9.0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ARIA optional dependencies — install as needed
+# Run: pip install -r requirements-optional.txt
+# ─────────────────────────────────────────────────────────────────────────────
+
+# --- Voice I/O ---
+# faster-whisper              # offline STT (pip install faster-whisper)
+# openai-whisper              # fallback STT
+# sounddevice                 # microphone input
+# edge-tts                    # Microsoft neural TTS (free)
+# pyttsx3                     # fully offline TTS fallback
+# noisereduce                 # spectral noise reduction
+# silero-vad                  # voice activity detection
+
+# --- Free LLM Router (zero-cost AI access) ---
+# groq                        # Groq SDK (free 14,400 req/day)
+# google-generativeai         # Google Gemini API (1M tokens/day free)
+# cohere                      # Cohere API (1000 calls/month free)
+# openai                      # OpenRouter (OpenAI-compatible)
+
+# --- Desktop control ---
+# pyautogui                   # mouse/keyboard/screenshot control
+# pywinauto                   # Windows UI Automation
+# pygetwindow                 # window enumeration
+# pytesseract                 # OCR (requires Tesseract binary)
+# pywin32                     # Windows API (win32api, win32gui)
+# comtypes                    # COM interface
+# pycaw                       # Windows Core Audio API
+# pynput                      # mouse/keyboard event recording
+# keyboard                    # global hotkeys
+# pystray                     # system tray icon
+# plyer                       # cross-platform notifications
+# win10toast                  # Windows 10/11 toast notifications
+
+# --- Document processing (extended) ---
+# pymupdf                     # PDF reading (fitz)
+# pdfplumber                  # PDF text + table extraction
+# PyPDF2                      # PDF fallback reader
+# python-docx                 # Word document reading
+# openpyxl                    # Excel reading
+# python-pptx                 # PowerPoint reading
+# ebooklib                    # EPUB reading
+# striprtf                    # RTF reading
+# markdown                    # Markdown parsing
+
+# --- Web crawling ---
+# scrapy                      # full web crawler
+# playwright                  # headless browser for JS-heavy sites
+# trafilatura                 # clean article extraction
+
+# --- Research / academic ---
+# scholarly                   # Google Scholar scraping
+
+# --- Advanced ML (NOVA + LoRA fine-tuning) ---
+# peft                        # LoRA fine-tuning
+# trl                         # SFTTrainer
+# bitsandbytes                # 4-bit quantization
+# accelerate                  # distributed training
+
+# --- Formal reasoning (NOVA) ---
+# z3-solver                   # Microsoft Z3 theorem prover
+
+# --- OCR ---
+# easyocr                     # OCR for scanned PDFs (100+ languages)
+
+# --- Computer vision ---
+# opencv-python               # image processing
+
+# --- Android device control ---
+# pure-python-adb             # ADB without binary
+# paramiko                    # SSH client
+# scp                         # Secure copy over SSH
+
+# --- Security scanning ---
+# python-whois                # WHOIS domain lookup
+# bandit                      # Python security linter
+# semgrep                     # static analysis
+
+# --- Testing ---
+# pytest                      # test runner
+# coverage                    # code coverage
+
+# --- NLP extras ---
+# langdetect                  # language detection
+# deep-translator             # free translation
+
+# --- Scheduling ---
+# apscheduler                 # background job scheduler
+
+# --- Analytics ---
+# memory-profiler             # memory profiling
+# tabulate                    # pretty-print tables
+
+# --- Capacitor (mobile build) ---
+# Node.js packages — install via: npm install (in app/ directory)
+# @capacitor/core @capacitor/android @capacitor/ios

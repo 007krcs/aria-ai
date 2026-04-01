@@ -1,0 +1,110 @@
+Starting ARIA...
+  Adaptive profile: MINI — 3.6 GB available RAM, 6 CPUs, CPU only
+  LLM: phi3:mini | Whisper: base | Workers: 1
+Engine ready — aria-custom:latest (available: aria-trained:latest, 
+llama3.1:latest, aria-custom:latest...)
+  [OK] Core engine + memory + logger
+  [OK] Reasoning agents
+  [OK] Document agents
+  [OK] Smart agents (training, crawler, search)
+  [OK] Vision OCR
+  [OK] Tiered OCR (6-tier fallback)
+NOVA engine initialised — all 5 components ready
+  [OK] NOVA engine (MCTS + PRM + Symbolic)
+NOVA Advanced initialised — Z3 + SymPy + Constitutional + Distillation + Online
+LoRA
+  [OK] NOVA Advanced (Z3 + SymPy + LoRA)
+  [OK] Async agent pool
+  [OK] Trend scanner + Universal scanner
+  [OK] Security agent
+  [OK] Self-construct agent
+  PatternDB loaded: 11 patterns
+  [OK] Code engine
+  System Monitor: device=Chandan id=952900f8
+  System monitoring started — tracking app usage
+  Task scheduler running
+  [OK] System monitor + Behaviour analyst + Research agent
+  [OK] Adaptation pipeline
+  [OK] Voice agent (STT + TTS + barge-in)
+  Tool registry: 21 tools loaded
+  [OK] Tool registry (21 tools)
+  [OK] Self-improvement engine
+  World model: 0 facts loaded
+  [OK] World model + Planning engine
+  Training scheduler: running (weekly at 3am)
+  [OK] Training pipeline (weekly scheduler active)
+  Proactive engine: monitoring prices · news · behaviour · system
+  [OK] Proactive engine (prices · news · behaviour · system)
+  [OK] Calendar & contacts
+  Backup scheduler: next run in 12.7h
+  Backup scheduler: nightly at 2am
+  [OK] Backup scheduler (nightly 2am)
+  [OK] Desktop agent (open/close/read/write/screenshot)
+  [OK] Browser agent (Selenium Chrome automation)
+  [OK] System agent (CPU/RAM/volume/clipboard/notifications)
+  [OK] Document agent (Word/Excel/PDF/CSV read-write-summarize)
+  [OK] Code executor (Python/JS/Shell/PowerShell sandbox)
+  [WARN] Media agent: cannot import name 'MediaAgent' from 'agents.media_agent'
+(C:\Users\chand\ai-remo\agents\media_agent.py)
+  [WARN] Network agent: cannot import name 'NetworkAgent' from 
+'agents.network_agent' (C:\Users\chand\ai-remo\agents\network_agent.py)
+  [WARN] Automation agent: cannot import name 'AutomationAgent' from 
+'agents.automation_agent' (C:\Users\chand\ai-remo\agents\automation_agent.py)
+  [OK] OS detector — windows 10.0.26200 | shell=bash.exe | admin=False
+  [OK] Terminal agent (run/fix/test/implement on any OS)
+  [OK] Security monitor (process/network/filesystem threat detection)
+  [OK] Chain of Thought engine (human-like / tree-of-thought / 
+self-consistency)
+  [OK] Activity trainer (user personalization + fine-tune data gen)
+  [OK] Web implementer (read URL -> plan -> generate -> test -> fix)
+AutoTuner scheduler started (every 24h).
+  [OK] Auto tuner (temperature/model/prompt optimization + self-improvement)
+  [OK] App tester (test/limitations/suggest/implement/audit)
+  [OK] Scam detector (phishing/domain-spoofing/iframe/SSL/WHOIS)
+  [OK] QuantumStockAgent (12-layer, 1200-pt composite, 25 markets)
+  [OK] SentimentPsychologyAgent (AMIA: 
+psychology+sentiment+operator+institutional+earnings)
+  [OK] InvestmentTimingAgent (15 indicators: 
+RSI/MACD/BB/EMA/Stoch/ATR/OBV/ADX/Fib/Pivots)
+  [OK] StoryAgent (PDF/EPUB/TXT narrator + on-demand story telling)
+  Loading embedding model: 
+sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+  [OK] KnowledgeGrowthEngine (anti-hallucination + continuous absorb + grounded
+RAG)
+  [OK] EnvironmentLearner (apps/docs/bookmarks/projects scanner)
+  [OK] ComputerAgent (perceive->plan->act->verify, pyautogui+vision)
+  [OK] FreeLLMRouter (8 free providers available)
+  [OK] WindowsKernelAgent 
+(Win+R/PowerShell/CMD/Git/Bash/Chrome-profiles/Java-analyzer/CodeWriter)
+  [WARN] ResearchSearchEngine: 'ResearchSearchEngine' object has no attribute 
+'list_sources'
+  [OK] MedicalResearchAgent 
+(symptom-dx/drug-analysis/lab-report/research-grading/literature)
+  [OK] Session trainer (100+ Q&A pairs: anti-bot/phishing/stealth/neuromorphic)
+[SessionTrainer] Generated 77 Q&A pairs across 5 topics.
+  [OK] TrustLanguageAgent ([SessionTrainer35]+ curated sources +  Exported 5077 pairs -language auto-detection()0
+ new) to 
+C:\Users\chand\ai-remo\data\training\aria_session_knowledge.jsonl
+  [OK] ConversationEngine (context/undo/repeat/entity memory)
+  [OK] TaskQueue background worker started
+  [OK] TaskQueue (background multi-step tasks + SSE progress)
+  [OK] OmegaOrchestrator — 27 agents ACTIVE
+  [OK] NeuralOrchestrator — neuromorphic 27-agent network ACTIVE
+       Hebbian weights loaded: 0 synapse pairs
+  [OK] AutoExecutor (autonomous SAFE/CAUTION/DANGEROUS action engine)
+
+ARIA ready — server starting on port 8000
+
+ARIA v2  http://localhost:8000
+Docs:       http://localhost:8000/docs
+Learning:   http://localhost:8000/learn
+
+  [OK] Notification manager loop wired
+  [OK] StockMonitor started (24/7 background watchlist)
+[SessionTrainer] Exported 77 pairs (0 new) to 
+C:\Users\chand\ai-remo\data\training\aria_session_knowledge.jsonl
+  [WARN] Auto-train export: 'WindowsPath' object has no attribute 'get'
+  [OK] llama3.2:latest pre-warmed (fast responses ready)
+  Embeddings ready — 
+sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+  Memory ready — 234 chunks in ChromaDB

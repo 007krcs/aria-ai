@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARIA — Learning Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f11;--bg2:#18181c;--bg3:#222228;--bg4:#2a2a32;
+  --border:#2e2e38;--border2:#3a3a48;
+  --text:#e8e8f0;--text2:#9898b0;--text3:#5a5a72;
+  --accent:#7c6af7;--green:#3dd68c;--red:#f06060;--amber:#f0a040;--blue:#4a9eff;
+  --r:10px;--rs:6px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+     background:var(--bg);color:var(--text);min-height:100vh}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);
+        padding:12px 24px;display:flex;align-items:center;justify-content:space-between;
+        position:sticky;top:0;z-index:10}
+.topbar h1{font-size:16px;font-weight:700}
+.topbar h1 span{color:var(--accent)}
+.topbar-right{display:flex;gap:12px;align-items:center}
+.back-btn{font-size:12px;padding:6px 12px;border-radius:var(--rs);
+          background:var(--bg3);border:1px solid var(--border2);color:var(--text2);
+          cursor:pointer;text-decoration:none;transition:all .15s}
+.back-btn:hover{border-color:var(--accent);color:var(--accent)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px}
+.dot.r{background:var(--red)}
+.content{max-width:1200px;margin:0 auto;padding:24px}
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab{padding:9px 16px;font-size:13px;color:var(--text3);cursor:pointer;border:none;background:none;
+     border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab:hover{color:var(--text2)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+/* Cards */
+.grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:20px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.card h3{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;
+         letter-spacing:.05em;margin-bottom:14px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
+           padding:16px;text-align:center}
+.stat-card .n{font-size:32px;font-weight:700}
+.stat-card .l{font-size:11px;color:var(--text3);margin-top:3px}
+.stat-card.accent .n{color:var(--accent)}
+.stat-card.green .n{color:var(--green)}
+.stat-card.amber .n{color:var(--amber)}
+.stat-card.red .n{color:var(--red)}
+/* Chart */
+.chart-wrap{position:relative;height:220px}
+/* Table */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;padding:7px 10px;color:var(--text3);border-bottom:1px solid var(--border);
+        font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:500}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text2)}
+.tbl tr:hover td{background:var(--bg3)}
+.tbl tr:last-child td{border:none}
+/* Timeline */
+.timeline{display:flex;flex-direction:column;gap:0}
+.tl-item{display:flex;gap:12px;align-items:flex-start;padding:10px 0;
+          border-bottom:1px solid var(--border)}
+.tl-item:last-child{border:none}
+.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.tl-dot.upload{background:var(--accent)}
+.tl-dot.web_search{background:var(--blue)}
+.tl-dot.url_ingest{background:var(--green)}
+.tl-dot.web_crawl{background:var(--amber)}
+.tl-dot.synthetic{background:var(--text3)}
+.tl-dot.document_upload{background:var(--accent)}
+.tl-dot.conversation{background:var(--text2)}
+.tl-info{flex:1}
+.tl-desc{font-size:13px;color:var(--text2);line-height:1.4}
+.tl-meta{font-size:10px;color:var(--text3);margin-top:3px;display:flex;gap:10px}
+.tl-chunks{font-size:10px;color:var(--green);font-weight:600}
+/* Badge */
+.badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500}
+.badge.acc{background:rgba(124,106,247,.15);color:var(--accent)}
+.badge.grn{background:rgba(61,214,140,.15);color:var(--green)}
+.badge.amb{background:rgba(240,160,64,.15);color:var(--amber)}
+.badge.red{background:rgba(240,96,96,.15);color:var(--red)}
+.badge.blu{background:rgba(74,158,255,.15);color:var(--blue)}
+/* Score ring */
+.score-ring{width:120px;height:120px;position:relative;margin:0 auto 12px}
+.score-ring canvas{width:120px;height:120px}
+.score-num{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+           font-size:24px;font-weight:700;color:var(--accent)}
+/* Progress bar */
+.prog{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin:4px 0}
+.prog-fill{height:100%;border-radius:3px;transition:width .5s}
+/* Recs */
+.rec{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);
+     padding:10px 12px;margin-bottom:8px;font-size:12px;color:var(--text2);line-height:1.5}
+.rec::before{content:'→ ';color:var(--accent)}
+/* Example card */
+.ex-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);
+         padding:12px;margin-bottom:8px}
+.ex-q{font-size:12px;font-weight:600;color:var(--text);margin-bottom:5px}
+.ex-a{font-size:12px;color:var(--text2);line-height:1.5}
+.ex-meta{font-size:10px;color:var(--text3);margin-top:5px}
+/* Generate form */
+.gen-row{display:flex;gap:8px;margin-bottom:12px}
+.inp{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);
+     padding:8px 12px;color:var(--text);font-size:13px;outline:none;
+     transition:border-color .15s;font-family:inherit}
+.inp:focus{border-color:var(--accent)}
+.btn{padding:7px 13px;border-radius:var(--rs);font-size:12px;font-weight:500;
+     cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);transition:all .15s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:#5b4dd4}
+select.inp option{background:var(--bg3)}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>A<span>R</span>IA — Learning Dashboard</h1>
+  <div class="topbar-right">
+    <span><span class="dot" id="sdot"></span><span id="stext" style="font-size:11px;color:var(--text3)">Connecting...</span></span>
+    <a href="/" class="back-btn">← Back to ARIA</a>
+  </div>
+</div>
+
+<div class="content">
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="tab('learning',this)">📚 What AI is Learning</button>
+    <button class="tab" onclick="tab('performance',this)">📈 Performance</button>
+    <button class="tab" onclick="tab('efficiency',this)">⚡ Efficiency</button>
+    <button class="tab" onclick="tab('training',this)">🧠 Training Data</button>
+  </div>
+
+  <!-- ── LEARNING TAB ── -->
+  <div class="tab-content active" id="tab-learning">
+    <div class="grid-4" id="learn-stats">
+      <div class="stat-card accent"><div class="n" id="ls-total">—</div><div class="l">Training examples</div></div>
+      <div class="stat-card green"><div class="n" id="ls-events">—</div><div class="l">Learning events</div></div>
+      <div class="stat-card amber"><div class="n" id="ls-today">—</div><div class="l">Learned today</div></div>
+      <div class="stat-card"><div class="n" id="mem-chunks" style="color:var(--blue)">—</div><div class="l">Memory chunks</div></div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Timeline -->
+      <div class="card">
+        <h3>Learning timeline — last 48 hours</h3>
+        <div class="timeline" id="timeline">
+          <p style="color:var(--text3);font-size:12px">Loading...</p>
+        </div>
+      </div>
+      <!-- Domain breakdown -->
+      <div class="card">
+        <h3>Knowledge by domain</h3>
+        <div id="domain-list">
+          <p style="color:var(--text3);font-size:12px">Loading...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Memory growth chart -->
+    <div class="card">
+      <h3>Memory growth over time</h3>
+      <div class="chart-wrap"><canvas id="memory-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ── PERFORMANCE TAB ── -->
+  <div class="tab-content" id="tab-performance">
+    <div class="grid-4" id="perf-stats">
+      <div class="stat-card accent"><div class="n" id="ps-total">—</div><div class="l">Total queries</div></div>
+      <div class="stat-card green"><div class="n" id="ps-success">—</div><div class="l">Success rate</div></div>
+      <div class="stat-card amber"><div class="n" id="ps-conf">—</div><div class="l">Avg confidence</div></div>
+      <div class="stat-card"><div class="n" id="ps-lat" style="color:var(--blue)">—</div><div class="l">Avg latency</div></div>
+    </div>
+
+    <!-- Hourly trend chart -->
+    <div class="card" style="margin-bottom:16px">
+      <h3>Queries over time (24h)</h3>
+      <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+    </div>
+
+    <!-- Domain breakdown -->
+    <div class="card" style="margin-bottom:16px">
+      <h3>Confidence by domain</h3>
+      <div class="chart-wrap" style="height:180px"><canvas id="domain-chart"></canvas></div>
+    </div>
+
+    <!-- Recent queries -->
+    <div class="card">
+      <h3>Recent queries</h3>
+      <div id="recent-q">Loading...</div>
+    </div>
+  </div>
+
+  <!-- ── EFFICIENCY TAB ── -->
+  <div class="tab-content" id="tab-efficiency">
+    <div class="grid-3">
+      <!-- Score -->
+      <div class="card" style="text-align:center">
+        <h3>Efficiency score</h3>
+        <div class="score-ring">
+          <canvas id="score-ring-c"></canvas>
+          <div class="score-num" id="eff-score">—</div>
+        </div>
+        <div style="font-size:14px;font-weight:600;color:var(--text)" id="eff-grade">—</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px" id="eff-sub">—</div>
+      </div>
+      <!-- Speed by intent -->
+      <div class="card">
+        <h3>Speed by intent</h3>
+        <div id="speed-table">Loading...</div>
+      </div>
+      <!-- Quality -->
+      <div class="card">
+        <h3>Weak domains (need more data)</h3>
+        <div id="weak-domains">Loading...</div>
+      </div>
+    </div>
+    <!-- Recommendations -->
+    <div class="card">
+      <h3>Recommendations</h3>
+      <div id="recs">Loading...</div>
+    </div>
+  </div>
+
+  <!-- ── TRAINING TAB ── -->
+  <div class="tab-content" id="tab-training">
+    <div class="grid-2" style="align-items:start">
+      <!-- Generate synthetic data -->
+      <div class="card">
+        <h3>Generate synthetic training data</h3>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
+          Uses your knowledge base to auto-generate Q&A pairs for fine-tuning.
+        </p>
+        <div class="gen-row">
+          <select class="inp" id="gen-domain">
+            <option value="general">General</option>
+            <option value="technology">Technology</option>
+            <option value="science">Science</option>
+            <option value="medicine">Medicine</option>
+            <option value="law">Law</option>
+            <option value="finance">Finance</option>
+            <option value="education">Education</option>
+          </select>
+          <input class="inp" type="number" id="gen-count" value="10" min="3" max="50" style="width:70px">
+          <button class="btn primary" onclick="generateSynth()">Generate</button>
+        </div>
+        <div id="gen-result"></div>
+      </div>
+      <!-- Export dataset -->
+      <div class="card">
+        <h3>Export training dataset</h3>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
+          Download all training examples as JSONL — ready for LoRA fine-tuning on Colab.
+        </p>
+        <div class="gen-row">
+          <select class="inp" id="exp-domain">
+            <option value="">All domains</option>
+            <option value="general">General</option>
+            <option value="technology">Technology</option>
+          </select>
+          <button class="btn primary" onclick="exportData()">Download JSONL</button>
+        </div>
+        <p style="font-size:11px;color:var(--text3);margin-top:10px">
+          After downloading: upload to Google Colab → run the finetune script → copy adapter back → ARIA uses the specialist model automatically.
+        </p>
+      </div>
+    </div>
+
+    <!-- Latest examples -->
+    <div class="card">
+      <h3>Latest training examples collected from interactions</h3>
+      <div id="examples">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API='http://localhost:8000';
+let charts={};
+
+// ── Ping ─────────────────────────────────────────────────────────────────────
+async function ping(){
+  try{
+    const d=await(await fetch(`${API}/api/health`)).json();
+    document.getElementById('sdot').className='dot';
+    document.getElementById('stext').textContent=`${d.model} · ${d.chunks} chunks`;
+    document.getElementById('mem-chunks').textContent=d.chunks;
+  }catch{
+    document.getElementById('sdot').className='dot r';
+    document.getElementById('stext').textContent='Offline';
+  }
+}
+ping();setInterval(ping,15000);
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+async function tab(id,btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+  await loadTab(id);
+}
+
+async function loadTab(id){
+  if(id==='learning')  await loadLearning();
+  if(id==='performance') await loadPerformance();
+  if(id==='efficiency')  await loadEfficiency();
+  if(id==='training')    await loadTraining();
+}
+
+// ── Learning ──────────────────────────────────────────────────────────────────
+async function loadLearning(){
+  try{
+    const[ls,tl,mg]=await Promise.all([
+      fetch(`${API}/api/learn/stats`).then(r=>r.json()),
+      fetch(`${API}/api/learn/timeline?hours=48`).then(r=>r.json()),
+      fetch(`${API}/api/perf/memory-growth`).then(r=>r.json()),
+    ]);
+
+    document.getElementById('ls-total').textContent=ls.total_examples??0;
+    document.getElementById('ls-events').textContent=ls.learning_events??0;
+    document.getElementById('ls-today').textContent=ls.learned_today??0;
+
+    // Timeline
+    const tl_el=document.getElementById('timeline');
+    if(!tl.events?.length){tl_el.innerHTML='<p style="color:var(--text3);font-size:12px">No learning events yet. Upload documents or search the web to start.</p>';
+    }else{
+      tl_el.innerHTML=tl.events.slice(0,30).map(e=>`
+        <div class="tl-item">
+          <div class="tl-dot ${e.event_type||''}"></div>
+          <div class="tl-info">
+            <div class="tl-desc">${esc(e.description||'')}</div>
+            <div class="tl-meta">
+              <span>${(e.ts||'').substring(0,16)}</span>
+              <span class="badge ${typeColor(e.event_type)}">${esc(e.event_type||'event')}</span>
+              <span class="tl-chunks">${e.chunks_added>0?'+'+e.chunks_added+' chunks':''}</span>
+            </div>
+          </div>
+        </div>`).join('');
+    }
+
+    // Domain breakdown
+    const dl=document.getElementById('domain-list');
+    if(ls.by_domain?.length){
+      const max=Math.max(...ls.by_domain.map(d=>d.count),1);
+      dl.innerHTML=ls.by_domain.map(d=>`
+        <div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+            <span style="color:var(--text2)">${esc(d.domain)}</span>
+            <span style="color:var(--accent)">${d.count} examples</span>
+          </div>
+          <div class="prog"><div class="prog-fill" style="width:${Math.round(d.count/max*100)}%;background:var(--accent)"></div></div>
+        </div>`).join('');
+    }else{dl.innerHTML='<p style="color:var(--text3);font-size:12px">No domain data yet.</p>';}
+
+    // Memory growth chart
+    if(mg.growth?.length){
+      const labels=mg.growth.map(g=>g.date);
+      const data=mg.growth.map(g=>g.chunks_added);
+      renderChart('memory-chart','bar',labels,data,'Chunks added','#7c6af7');
+    }
+  }catch(e){console.error(e);}
+}
+
+// ── Performance ────────────────────────────────────────────────────────────────
+async function loadPerformance(){
+  try{
+    const[rep,trend,domains]=await Promise.all([
+      fetch(`${API}/api/perf/report`).then(r=>r.json()),
+      fetch(`${API}/api/perf/trend?hours=24`).then(r=>r.json()),
+      fetch(`${API}/api/perf/domains`).then(r=>r.json()),
+    ]);
+
+    const s=rep.summary||{};
+    document.getElementById('ps-total').textContent=s.total_interactions??0;
+    document.getElementById('ps-success').textContent=(s.success_rate??0)+'%';
+    document.getElementById('ps-conf').textContent=s.avg_confidence?(s.avg_confidence*100).toFixed(0)+'%':'—';
+
+    // Trend chart
+    if(trend.trend?.length){
+      const labels=trend.trend.map(t=>(t.hour||'').substring(11,16));
+      const data=trend.trend.map(t=>t.queries||0);
+      renderChart('trend-chart','line',labels,data,'Queries/hour','#7c6af7');
+    }
+
+    // Domain confidence chart
+    if(domains.domains?.length){
+      const top=domains.domains.slice(0,8);
+      const labels=top.map(d=>d.domain||'unknown');
+      const data=top.map(d=>+(d.avg_conf*100).toFixed(1)||0);
+      renderChart('domain-chart','bar',labels,data,'Confidence %','#3dd68c');
+    }
+
+    // Recent queries
+    const rq=document.getElementById('recent-q');
+    if(rep.top_queries?.length){
+      rq.innerHTML=`<table class="tbl">
+        <thead><tr><th>Query</th><th>Confidence</th><th>Time</th><th>Date</th></tr></thead>
+        <tbody>${rep.top_queries.map(q=>`<tr>
+          <td>${esc((q.query||'').substring(0,60))}</td>
+          <td><span class="badge ${q.confidence>.7?'grn':q.confidence>.4?'amb':'red'}">${(q.confidence*100).toFixed(0)}%</span></td>
+          <td>${q.latency_ms?(q.latency_ms/1000).toFixed(1)+'s':'—'}</td>
+          <td>${(q.ts||'').substring(0,16)}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    }else{rq.innerHTML='<p style="color:var(--text3);font-size:12px">No queries yet.</p>';}
+  }catch(e){console.error(e);}
+}
+
+// ── Efficiency ────────────────────────────────────────────────────────────────
+async function loadEfficiency(){
+  try{
+    const d=await fetch(`${API}/api/efficiency`).then(r=>r.json());
+    const sc=d.score||{};
+    const score=sc.score||0;
+
+    document.getElementById('eff-score').textContent=score;
+    document.getElementById('eff-grade').textContent=sc.grade||'—';
+    document.getElementById('eff-sub').textContent=
+      `${sc.success_rate??0}% success · ${sc.avg_confidence??0}% avg conf · ${sc.avg_latency_s??0}s avg`;
+
+    // Score ring
+    const ctx=document.getElementById('score-ring-c').getContext('2d');
+    if(charts['score-ring']){charts['score-ring'].destroy();}
+    charts['score-ring']=new Chart(ctx,{
+      type:'doughnut',
+      data:{datasets:[{data:[score,100-score],backgroundColor:['#7c6af7','#2a2a32'],borderWidth:0}]},
+      options:{cutout:'75%',plugins:{legend:{display:false},tooltip:{enabled:false}},animation:{duration:800}}
+    });
+
+    // Speed table
+    const st=document.getElementById('speed-table');
+    const sp=d.speed?.by_intent||[];
+    if(sp.length){
+      st.innerHTML=`<table class="tbl">
+        <thead><tr><th>Intent</th><th>Avg</th><th>Count</th></tr></thead>
+        <tbody>${sp.map(r=>`<tr>
+          <td>${esc(r.intent||'—')}</td>
+          <td>${r.avg_ms?(r.avg_ms/1000).toFixed(1)+'s':'—'}</td>
+          <td>${r.count||0}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    }else{st.innerHTML='<p style="color:var(--text3);font-size:12px">No speed data yet.</p>';}
+
+    // Weak domains
+    const wd=document.getElementById('weak-domains');
+    const weak=d.quality?.weak_domains||[];
+    if(weak.length){
+      wd.innerHTML=weak.map(w=>`
+        <div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+            <span style="color:var(--text2)">${esc(w.intent||'—')}</span>
+            <span style="color:var(--red)">${(w.avg_conf*100).toFixed(0)}% conf</span>
+          </div>
+          <div class="prog"><div class="prog-fill" style="width:${w.avg_conf*100}%;background:var(--red)"></div></div>
+        </div>`).join('');
+    }else{wd.innerHTML='<p style="color:var(--green);font-size:12px">All domains performing well!</p>';}
+
+    // Recommendations
+    const recs=[...(d.speed?.recommendations||[]),(d.quality?.suggestions||[])].flat();
+    document.getElementById('recs').innerHTML=
+      recs.map(r=>`<div class="rec">${esc(r)}</div>`).join('')||
+      '<div class="rec">No recommendations right now — keep using ARIA to build data.</div>';
+
+  }catch(e){console.error(e);}
+}
+
+// ── Training ──────────────────────────────────────────────────────────────────
+async function loadTraining(){
+  try{
+    const d=await fetch(`${API}/api/learn/stats`).then(r=>r.json());
+    const el=document.getElementById('examples');
+    if(d.by_domain?.length){
+      // Show a summary — individual examples need a separate endpoint
+      el.innerHTML=d.by_domain.map(dom=>`
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;
+             border-bottom:1px solid var(--border)">
+          <span class="badge acc">${esc(dom.domain)}</span>
+          <span style="font-size:13px;color:var(--text2)">${dom.count} examples collected</span>
+          <span style="font-size:11px;color:var(--text3)">avg confidence: ${(dom.avg_confidence*100).toFixed(0)}%</span>
+        </div>`).join('');
+    }else{
+      el.innerHTML='<p style="color:var(--text3);font-size:12px">No training examples yet. Chat with ARIA or upload documents to start collecting examples automatically.</p>';
+    }
+  }catch(e){console.error(e);}
+}
+
+async function generateSynth(){
+  const domain=document.getElementById('gen-domain').value;
+  const count=parseInt(document.getElementById('gen-count').value)||10;
+  const el=document.getElementById('gen-result');
+  el.innerHTML='<p style="color:var(--text3);font-size:12px;margin-top:8px">Generating... (this takes 30-60s)</p>';
+  try{
+    const d=await(await fetch(`${API}/api/learn/generate`,{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({domain,count})})).json();
+    el.innerHTML=`<p style="color:var(--green);font-size:12px;margin-top:8px">
+      Generated ${d.generated} examples for domain '${esc(domain)}'
+    </p>
+    ${(d.examples||[]).slice(0,3).map(ex=>`
+      <div class="ex-card" style="margin-top:8px">
+        <div class="ex-q">Q: ${esc(ex.question||'')}</div>
+        <div class="ex-a">A: ${esc((ex.answer||'').substring(0,150))}...</div>
+      </div>`).join('')}`;
+  }catch(e){el.innerHTML=`<p style="color:var(--red);font-size:12px;margin-top:8px">${esc(e.message)}</p>`;}
+}
+
+async function exportData(){
+  const domain=document.getElementById('exp-domain').value||undefined;
+  const url=domain?`${API}/api/learn/export?domain=${domain}`:`${API}/api/learn/export`;
+  window.open(url,'_blank');
+}
+
+// ── Chart helper ──────────────────────────────────────────────────────────────
+function renderChart(id,type,labels,data,label,color){
+  const ctx=document.getElementById(id)?.getContext('2d');
+  if(!ctx)return;
+  if(charts[id]){charts[id].destroy();}
+  charts[id]=new Chart(ctx,{
+    type,
+    data:{
+      labels,
+      datasets:[{label,data,
+        backgroundColor:type==='bar'?color+'33':undefined,
+        borderColor:color,
+        borderWidth:type==='bar'?0:2,
+        fill:type==='line',
+        tension:.35,
+        pointRadius:type==='line'?3:0,
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'#18181c',borderColor:'#2e2e38',borderWidth:1,
+        titleColor:'#e8e8f0',bodyColor:'#9898b0',
+      }},
+      scales:{
+        x:{grid:{color:'#2e2e38'},ticks:{color:'#5a5a72',font:{size:10}}},
+        y:{grid:{color:'#2e2e38'},ticks:{color:'#5a5a72',font:{size:10}}},
+      }
+    }
+  });
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function typeColor(t){
+  const m={upload:'acc',web_search:'blu',url_ingest:'grn',web_crawl:'amb',conversation:'acc'};
+  return m[t]||'acc';
+}
+
+// Load first tab on page open
+loadLearning();
+</script>
+</body>
+</html>

@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARIA — NOVA Reasoning Engine</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f11;--bg2:#18181c;--bg3:#222228;--bg4:#2a2a32;
+  --border:#2e2e38;--border2:#3a3a48;
+  --text:#e8e8f0;--text2:#9898b0;--text3:#5a5a72;
+  --accent:#7c6af7;--green:#3dd68c;--red:#f06060;--amber:#f0a040;--blue:#4a9eff;--teal:#3dd6b8;
+  --r:10px;--rs:6px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 24px;
+        display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.topbar-left h1{font-size:15px;font-weight:700}
+.topbar-left h1 span{color:var(--accent)}
+.topbar-left p{font-size:11px;color:var(--text3);margin-top:1px}
+.back-btn{font-size:12px;padding:6px 12px;border-radius:var(--rs);background:var(--bg3);
+          border:1px solid var(--border2);color:var(--text2);cursor:pointer;text-decoration:none;transition:all .15s}
+.back-btn:hover{border-color:var(--accent);color:var(--accent)}
+.content{max-width:980px;margin:0 auto;padding:24px}
+.tabs{display:flex;gap:3px;margin-bottom:22px;border-bottom:1px solid var(--border)}
+.tab{padding:9px 16px;font-size:13px;color:var(--text3);cursor:pointer;border:none;background:none;
+     border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab:hover{color:var(--text2)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
+/* Cards */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.card h3{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px}
+/* Inputs */
+.inp{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);
+     padding:9px 12px;color:var(--text);font-size:13px;outline:none;transition:border-color .15s;font-family:inherit;width:100%}
+.inp:focus{border-color:var(--accent)}
+select.inp option{background:var(--bg3)}
+.inp-row{display:flex;gap:8px;margin-bottom:12px;align-items:center}
+/* Buttons */
+.btn{padding:8px 14px;border-radius:var(--rs);font-size:12px;font-weight:500;
+     cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);transition:all .15s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:#5b4dd4}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+/* Result panel */
+.result-panel{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);
+              padding:16px;margin-top:14px;display:none}
+.result-answer{font-size:13px;line-height:1.7;color:var(--text)}
+.result-answer h1,.result-answer h2,.result-answer h3{font-size:14px;font-weight:600;margin:10px 0 4px}
+.result-answer p{margin:4px 0}
+.result-answer ul,.result-answer ol{margin:6px 0 6px 20px}
+.result-answer code{background:var(--bg4);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px}
+.result-answer pre{background:var(--bg4);padding:10px;border-radius:var(--rs);overflow-x:auto;margin:8px 0}
+.result-answer pre code{background:none;padding:0}
+.result-answer strong{color:var(--text);font-weight:600}
+/* Metadata row */
+.meta-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.meta-chip{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500}
+.chip-math{background:rgba(61,214,140,.15);color:var(--green)}
+.chip-mcts{background:rgba(124,106,247,.15);color:var(--accent)}
+.chip-symbolic{background:rgba(74,158,255,.15);color:var(--blue)}
+.chip-logic{background:rgba(240,160,64,.15);color:var(--amber)}
+.chip-cot{background:rgba(61,214,184,.15);color:var(--teal)}
+.chip-conf{background:rgba(61,214,140,.15);color:var(--green)}
+.chip-conf.low{background:rgba(240,96,96,.15);color:var(--red)}
+/* Reasoning path */
+.path-steps{margin-top:10px}
+.step-item{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
+.step-num{width:22px;height:22px;border-radius:50%;background:rgba(124,106,247,.2);
+          color:var(--accent);font-size:11px;font-weight:700;display:flex;align-items:center;
+          justify-content:center;flex-shrink:0;margin-top:2px}
+.step-text{font-size:12px;color:var(--text2);line-height:1.55;flex:1}
+/* Symbolic result */
+.sym-box{background:var(--bg4);border:1px solid var(--green);border-radius:var(--rs);
+         padding:10px 14px;margin-top:10px;font-family:monospace;font-size:13px}
+.sym-box .label{font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.sym-val{font-size:18px;font-weight:700;color:var(--green)}
+/* MCTS paths */
+.mcts-path{background:var(--bg4);border-radius:var(--rs);padding:10px 12px;
+           margin-bottom:6px;font-size:12px;color:var(--text2);line-height:1.5;cursor:pointer}
+.mcts-path:hover{border:1px solid var(--border2);background:var(--bg3)}
+.mcts-path .score{float:right;color:var(--accent);font-weight:600;font-size:11px}
+/* Self-play */
+.sp-log{background:var(--bg4);border-radius:var(--rs);padding:12px;max-height:300px;
+        overflow-y:auto;font-family:monospace;font-size:11px;line-height:1.7}
+.sp-log .ok{color:var(--green)}
+.sp-log .err{color:var(--red)}
+.sp-log .info{color:var(--text3)}
+.sp-log .imp{color:var(--accent)}
+/* Stats grid */
+.stats-g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:20px}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center}
+.stat .n{font-size:26px;font-weight:700;color:var(--accent)}
+.stat .l{font-size:10px;color:var(--text3);margin-top:3px}
+/* Prog */
+.prog{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin:8px 0}
+.prog-f{height:100%;border-radius:3px;background:var(--accent);transition:width .4s}
+/* Thinking indicator */
+.thinking{display:flex;gap:5px;align-items:center;padding:8px 0}
+.thinking span{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:th 1.2s infinite}
+.thinking span:nth-child(2){animation-delay:.2s}
+.thinking span:nth-child(3){animation-delay:.4s}
+@keyframes th{0%,80%,100%{opacity:.2}40%{opacity:1}}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>A<span>R</span>IA — <span style="color:var(--teal)">NOVA</span> Engine</h1>
+    <p>Neurosymbolic · MCTS · Process Reward · Self-Play · Consistency</p>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <span style="font-size:11px;color:var(--text3)" id="nova-status">Loading...</span>
+    <a href="/" class="back-btn">← Back to ARIA</a>
+  </div>
+</div>
+
+<div class="content">
+  <div class="tabs">
+    <button class="tab active" onclick="tab('reason',this)">Reason</button>
+    <button class="tab" onclick="tab('math',this)">Symbolic Math</button>
+    <button class="tab" onclick="tab('mcts',this)">MCTS Explorer</button>
+    <button class="tab" onclick="tab('selfplay',this)">Self-Play Training</button>
+    <button class="tab" onclick="tab('stats',this);loadStats()">PRM Stats</button>
+  </div>
+
+  <!-- REASON TAB -->
+  <div class="tab-pane active" id="tab-reason">
+    <div class="card">
+      <h3>NOVA full reasoning pipeline</h3>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:14px">
+        Automatically routes your question through the best component: symbolic execution for math,
+        MCTS exploration for complex reasoning, logic analyser for formal problems.
+        Every answer is scored by the Process Reward Model and checked for consistency.
+      </p>
+      <div class="inp-row">
+        <textarea class="inp" id="r-q" rows="3" placeholder="Ask anything — math, logic, algorithms, knowledge questions..."></textarea>
+      </div>
+      <div class="inp-row">
+        <select class="inp" id="r-mode" style="max-width:180px">
+          <option value="">Auto-detect (recommended)</option>
+          <option value="math">Force: Math</option>
+          <option value="logic">Force: Logic</option>
+          <option value="algorithm">Force: Algorithm</option>
+          <option value="knowledge">Force: Knowledge</option>
+        </select>
+        <input class="inp" id="r-sims" type="number" min="1" max="8" value="3" style="max-width:80px" title="MCTS simulations">
+        <span style="font-size:11px;color:var(--text3)">simulations</span>
+        <button class="btn primary" onclick="doReason()">Reason with NOVA</button>
+      </div>
+      <div id="r-thinking" style="display:none">
+        <div class="thinking"><span></span><span></span><span></span></div>
+        <p style="font-size:11px;color:var(--text3);margin-top:4px" id="r-status">Classifying problem...</p>
+      </div>
+      <div class="result-panel" id="r-result"></div>
+    </div>
+
+    <div class="card">
+      <h3>Try these examples</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <button class="btn" onclick="setQ('What is 15% of 2400 and is 997 a prime number?')">Math verification</button>
+        <button class="btn" onclick="setQ('If all humans are mortal, and Socrates is human, is Socrates mortal? And is this modus ponens?')">Logic chain</button>
+        <button class="btn" onclick="setQ('Explain quicksort algorithm and its worst-case time complexity')">Algorithm</button>
+        <button class="btn" onclick="setQ('Why does the sky appear blue during the day but red at sunset?')">Knowledge + reasoning</button>
+        <button class="btn" onclick="setQ('Calculate the compound interest on Rs 10000 at 8% per annum for 3 years')">Word problem</button>
+        <button class="btn" onclick="setQ('Is it true that Python is slower than C in all cases? Verify this claim.')">Fact verification</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATH TAB -->
+  <div class="tab-pane" id="tab-math">
+    <div class="card">
+      <h3>Symbolic executor — exact verified arithmetic</h3>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:14px">
+        Converts your problem to Python and executes it exactly. 
+        Numbers are computed, not guessed. 237 × 48 will always be 11376.
+      </p>
+      <div class="inp-row">
+        <input class="inp" id="m-q" placeholder="237 × 48, is 997 prime, fibonacci(20), sort [5,2,8,1,3]"
+               onkeydown="if(event.key==='Enter')doMath()">
+        <button class="btn primary" onclick="doMath()">Execute</button>
+      </div>
+      <div class="result-panel" id="m-result"></div>
+    </div>
+    <div class="card">
+      <h3>What the symbolic executor can verify</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;color:var(--text2)">
+        <div><strong style="color:var(--text)">Arithmetic</strong><br>+, -, ×, ÷, powers, modulo</div>
+        <div><strong style="color:var(--text)">Number theory</strong><br>Prime check, GCD, factors, Fibonacci</div>
+        <div><strong style="color:var(--text)">Finance</strong><br>Compound interest, percentages, ratios</div>
+        <div><strong style="color:var(--text)">Sorting</strong><br>sorted(), min, max, any list operation</div>
+        <div><strong style="color:var(--text)">Sequences</strong><br>Any pattern that can be expressed as code</div>
+        <div><strong style="color:var(--text)">Custom code</strong><br>Any Python that stores result in `result`</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MCTS TAB -->
+  <div class="tab-pane" id="tab-mcts">
+    <div class="card">
+      <h3>MCTS reasoning explorer</h3>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:14px">
+        Explores multiple reasoning paths simultaneously. Each path is scored by the Process Reward Model.
+        The best path wins. More simulations = better answer but slower.
+      </p>
+      <div class="inp-row">
+        <input class="inp" id="mc-q" placeholder="A complex question that benefits from exploring multiple approaches...">
+        <input class="inp" id="mc-sims" type="number" min="2" max="10" value="4" style="max-width:70px">
+        <button class="btn primary" onclick="doMCTS()">Explore paths</button>
+      </div>
+      <div id="mc-thinking" style="display:none">
+        <div class="thinking"><span></span><span></span><span></span></div>
+        <p style="font-size:11px;color:var(--text3);margin-top:4px">Exploring reasoning paths via MCTS...</p>
+      </div>
+      <div class="result-panel" id="mc-result"></div>
+    </div>
+  </div>
+
+  <!-- SELF-PLAY TAB -->
+  <div class="tab-pane" id="tab-selfplay">
+    <div class="card">
+      <h3>Self-play training — AI trains itself</h3>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:14px">
+        Generator creates Q+A pairs. Critic attacks them. Improved answers become training data.
+        No human labels needed. Run this to build a LoRA fine-tuning dataset automatically.
+      </p>
+      <div class="inp-row">
+        <textarea class="inp" id="sp-topics" rows="3"
+          placeholder="One topic per line:&#10;sorting algorithms&#10;prime numbers&#10;Newton's laws of motion"></textarea>
+      </div>
+      <div class="inp-row">
+        <select class="inp" id="sp-domain">
+          <option value="general">General</option>
+          <option value="technology">Technology</option>
+          <option value="science">Science</option>
+          <option value="mathematics">Mathematics</option>
+          <option value="education">Education</option>
+        </select>
+        <input class="inp" id="sp-eps" type="number" min="1" max="10" value="2" style="max-width:70px">
+        <span style="font-size:11px;color:var(--text3)">episodes/topic</span>
+        <button class="btn primary" id="sp-btn" onclick="startSelfPlay()">Start self-play</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+        Each episode = 1 question + initial answer + critique + improved answer. Takes ~2-3 minutes per topic.
+      </div>
+      <div id="sp-progress" style="display:none">
+        <div class="prog"><div class="prog-f" id="sp-bar" style="width:0%"></div></div>
+        <div style="display:flex;gap:20px;margin:8px 0;font-size:12px">
+          <span>Episodes: <strong id="sp-done">0</strong>/<strong id="sp-total">0</strong></span>
+          <span>Avg improvement: <strong id="sp-avg-imp" style="color:var(--accent)">—</strong></span>
+        </div>
+        <div class="sp-log" id="sp-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS TAB -->
+  <div class="tab-pane" id="tab-stats">
+    <div class="stats-g" id="stats-grid">
+      <div class="stat"><div class="n" id="st-steps">—</div><div class="l">Steps scored by PRM</div></div>
+      <div class="stat"><div class="n" id="st-avg" style="color:var(--teal)">—</div><div class="l">Avg step score</div></div>
+      <div class="stat"><div class="n" id="st-beliefs" style="color:var(--blue)">—</div><div class="l">Active beliefs</div></div>
+      <div class="stat"><div class="n" id="st-min" style="color:var(--amber)">—</div><div class="l">Min step score</div></div>
+    </div>
+    <div class="card">
+      <h3>What makes NOVA different from standard ARIA</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="font-size:13px;line-height:1.7">
+          <div style="color:var(--text2);margin-bottom:8px"><span style="color:var(--text);font-weight:500">Standard ARIA (CoT):</span></div>
+          One reasoning path generated.<br>
+          Final answer scored once.<br>
+          Math is guessed.<br>
+          No memory of prior answers.<br>
+          No exploration of alternatives.
+        </div>
+        <div style="font-size:13px;line-height:1.7">
+          <div style="color:var(--text2);margin-bottom:8px"><span style="color:var(--teal);font-weight:500">NOVA:</span></div>
+          Multiple paths explored (MCTS).<br>
+          Every step scored (PRM).<br>
+          Math executed in Python.<br>
+          Checks against belief store.<br>
+          Best path selected, not first path.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+marked.setOptions({breaks:true,gfm:true});
+
+// ── Status ────────────────────────────────────────────────────────────────────
+async function ping(){
+  try{
+    const d=await(await fetch(`${API}/api/health`)).json();
+    document.getElementById('nova-status').textContent=`${d.model} ready`;
+  }catch{
+    document.getElementById('nova-status').textContent='Server offline';
+  }
+}
+ping();
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+function tab(id,btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+function setQ(q){
+  document.getElementById('r-q').value=q;
+}
+
+// ── NOVA Reason ────────────────────────────────────────────────────────────────
+async function doReason(){
+  const q=document.getElementById('r-q').value.trim();
+  if(!q)return;
+  const mode=document.getElementById('r-mode').value||undefined;
+  const sims=parseInt(document.getElementById('r-sims').value)||3;
+
+  document.getElementById('r-thinking').style.display='block';
+  document.getElementById('r-result').style.display='none';
+  document.getElementById('r-status').textContent='Classifying problem...';
+
+  try{
+    const r=await fetch(`${API}/api/nova/reason`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:q,force_mode:mode||null,mcts_simulations:sims})
+    });
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'Failed');
+    renderResult(d,'r-result');
+  }catch(e){
+    document.getElementById('r-result').style.display='block';
+    document.getElementById('r-result').innerHTML=`<p style="color:var(--red)">${esc(e.message)}</p>`;
+  }
+  document.getElementById('r-thinking').style.display='none';
+}
+
+function renderResult(d,elId){
+  const el=document.getElementById(elId);
+  el.style.display='block';
+
+  const compColors={
+    'symbolic_executor':'chip-symbolic',
+    'mcts':'chip-mcts','mcts+symbolic':'chip-mcts',
+    'logic_analyser':'chip-logic','cot':'chip-cot','unknown':'chip-cot'
+  };
+  const compClass=compColors[d.component]||'chip-cot';
+  const confClass=d.confidence>0.65?'chip-conf':'chip-conf low';
+
+  let html=`<div class="meta-row">
+    <span class="meta-chip ${compColors[d.problem_type]||'chip-cot'}">${d.problem_type||'—'}</span>
+    <span class="meta-chip ${compClass}">${d.component||'—'}</span>
+    <span class="meta-chip ${confClass}">conf ${Math.round((d.confidence||0)*100)}%</span>
+    <span class="meta-chip" style="background:rgba(255,255,255,.05);color:var(--text3)">${d.latency_ms||0}ms</span>
+    ${d.symbolic_verified?'<span class="meta-chip chip-symbolic">✓ Symbolically verified</span>':''}
+    ${d.consistency_conflicts?.length?'<span class="meta-chip" style="background:rgba(240,96,96,.15);color:var(--red)">Contradiction resolved</span>':''}
+  </div>`;
+
+  // Symbolic result box
+  if(d.exec_result!==null&&d.exec_result!==undefined){
+    html+=`<div class="sym-box">
+      <div class="label">Computed result (exact — not guessed)</div>
+      <div class="sym-val">${esc(String(d.exec_result))}</div>
+    </div>`;
+  }
+
+  html+=`<div class="result-answer" style="margin-top:12px">${marked.parse(d.answer||'No answer')}</div>`;
+
+  // Reasoning path
+  if(d.reasoning_path?.length>1){
+    html+=`<details style="margin-top:14px">
+      <summary style="font-size:12px;color:var(--text3);cursor:pointer">
+        View reasoning path (${d.reasoning_path.length} steps)
+      </summary>
+      <div class="path-steps" style="margin-top:10px">
+        ${d.reasoning_path.slice(1).map((s,i)=>`
+          <div class="step-item">
+            <div class="step-num">${i+1}</div>
+            <div class="step-text">${esc(s.substring(0,200))}</div>
+          </div>`).join('')}
+      </div>
+    </details>`;
+  }
+
+  el.innerHTML=html;
+}
+
+// ── Math ──────────────────────────────────────────────────────────────────────
+async function doMath(){
+  const q=document.getElementById('m-q').value.trim();
+  if(!q)return;
+  const el=document.getElementById('m-result');
+  el.style.display='block';
+  el.innerHTML='<div class="thinking"><span></span><span></span><span></span></div>';
+  try{
+    const r=await fetch(`${API}/api/nova/reason`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:q,force_mode:'math',mcts_simulations:2})
+    });
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'Failed');
+    renderResult(d,'m-result');
+  }catch(e){el.innerHTML=`<p style="color:var(--red)">${esc(e.message)}</p>`;}
+}
+
+// ── MCTS ──────────────────────────────────────────────────────────────────────
+async function doMCTS(){
+  const q=document.getElementById('mc-q').value.trim();
+  const sims=parseInt(document.getElementById('mc-sims').value)||4;
+  if(!q)return;
+  document.getElementById('mc-thinking').style.display='block';
+  document.getElementById('mc-result').style.display='none';
+  try{
+    const r=await fetch(`${API}/api/nova/reason`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:q,mcts_simulations:sims})
+    });
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'Failed');
+    renderResult(d,'mc-result');
+  }catch(e){
+    document.getElementById('mc-result').style.display='block';
+    document.getElementById('mc-result').innerHTML=`<p style="color:var(--red)">${esc(e.message)}</p>`;
+  }
+  document.getElementById('mc-thinking').style.display='none';
+}
+
+// ── Self-play ─────────────────────────────────────────────────────────────────
+async function startSelfPlay(){
+  const raw=document.getElementById('sp-topics').value.trim();
+  if(!raw)return;
+  const topics=raw.split('\n').map(t=>t.trim()).filter(Boolean);
+  const domain=document.getElementById('sp-domain').value;
+  const eps=parseInt(document.getElementById('sp-eps').value)||2;
+
+  document.getElementById('sp-btn').disabled=true;
+  document.getElementById('sp-progress').style.display='block';
+  document.getElementById('sp-log').innerHTML='';
+  document.getElementById('sp-done').textContent='0';
+  document.getElementById('sp-total').textContent=topics.length*eps;
+  document.getElementById('sp-bar').style.width='0%';
+
+  const log=document.getElementById('sp-log');
+  const addLog=(cls,txt)=>{const d=document.createElement('div');d.className=cls;d.textContent=txt;log.appendChild(d);log.scrollTop=99999;};
+
+  let improvements=[];
+
+  const resp=await fetch(`${API}/api/nova/selfplay/stream`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({topics,domain,episodes_per_topic:eps})
+  });
+  const reader=resp.body.getReader();
+  const dec=new TextDecoder();
+  let buf='';
+
+  while(true){
+    const{done,value}=await reader.read();
+    if(done)break;
+    buf+=dec.decode(value,{stream:true});
+    const lines=buf.split('\n');buf=lines.pop();
+    for(const line of lines){
+      if(!line.startsWith('data: '))continue;
+      const s=JSON.parse(line.slice(6));
+      if(s.type==='episode'){
+        document.getElementById('sp-done').textContent=s.done;
+        const pct=Math.round(s.done/s.total*100);
+        document.getElementById('sp-bar').style.width=pct+'%';
+        improvements.push(s.improvement||0);
+        const avg=improvements.reduce((a,b)=>a+b,0)/improvements.length;
+        document.getElementById('sp-avg-imp').textContent=(avg>=0?'+':'')+avg.toFixed(3);
+        addLog('imp',`Episode ${s.done}: ${s.topic} — score: ${s.score.toFixed(2)}, improvement: ${s.improvement>=0?'+':''}${s.improvement.toFixed(3)}`);
+      }else if(s.type==='error'){
+        addLog('err',`Error: ${s.error}`);
+      }else if(s.type==='done'){
+        addLog('ok',`DONE — ${s.total_episodes} episodes. Dataset saved: ${s.file}`);
+      }
+    }
+  }
+  document.getElementById('sp-btn').disabled=false;
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+async function loadStats(){
+  try{
+    const d=await(await fetch(`${API}/api/nova/stats`)).json();
+    document.getElementById('st-steps').textContent=d.steps_scored??0;
+    document.getElementById('st-avg').textContent=d.avg_score?Math.round(d.avg_score*100)+'%':'—';
+    document.getElementById('st-beliefs').textContent=d.belief_count??0;
+    document.getElementById('st-min').textContent=d.min_score?Math.round(d.min_score*100)+'%':'—';
+  }catch(e){console.error(e);}
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+</script>
+</body>
+</html>

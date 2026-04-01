@@ -1,0 +1,27 @@
+{
+  "include": ["."],
+  "exclude": [
+    ".venv",
+    "venv",
+    "env",
+    "**/__pycache__",
+    "**/node_modules",
+    "app/node_modules",
+    "app/dist"
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnknownArgumentType": "none",
+  "reportGeneralTypeIssues": "warning",
+  "reportOptionalMemberAccess": "none",
+  "reportAttributeAccessIssue": "none",
+  "stubPath": "typestubs",
+  "useLibraryCodeForTypes": true,
+  "autoSearchPaths": true
+}
