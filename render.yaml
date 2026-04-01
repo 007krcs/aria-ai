@@ -2,9 +2,9 @@ services:
   - type: web
     name: aria-ai
     runtime: python
-    region: singapore          # closest to India — lowest latency
+    region: singapore
     plan: free
-    buildCommand: |
+    buildCommand: >-
       pip install --upgrade pip &&
       pip install -r requirements.render.txt &&
       cd app && npm install && npm run build && cd ..
@@ -15,11 +15,11 @@ services:
         value: 10000
       - key: API_HOST
         value: 0.0.0.0
-      - key: PYTHONUNBUFFERED
-        value: "1"
       - key: ARIA_ENV
         value: cloud
+      - key: PYTHONUNBUFFERED
+        value: "1"
       - key: GROQ_API_KEY
-        sync: false            # set this in Render dashboard
+        sync: false
       - key: OPENAI_API_KEY
-        sync: false            # optional
+        sync: false
