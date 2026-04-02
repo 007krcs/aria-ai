@@ -130,18 +130,44 @@ NEURAL_WEIGHTS_PATH  = DATA_DIR / "synaptic_weights.json"                 # pers
 CONSENSUS_N          = int(os.getenv("CONSENSUS_N",            "2"))      # min agents for consensus
 CONSENSUS_SIM        = float(os.getenv("CONSENSUS_SIM",        "0.35"))   # Jaccard threshold
 
-# ── Groq Cloud API (free LLM — replaces Ollama for cloud deployment) ─────────
-# Get a free key at https://console.groq.com (14,400 req/day free)
-GROQ_API_KEY  = os.getenv("GROQ_API_KEY", "").strip()
-GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-# Best free model: llama-3.3-70b-versatile (70B, very fast on Groq hardware)
-GROQ_MODEL    = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-
 # ── LLM Provider ─────────────────────────────────────────────────────────────
-# "auto"  → use Groq if GROQ_API_KEY is set, else Ollama
-# "groq"  → force Groq (requires GROQ_API_KEY)
-# "ollama"→ force local Ollama
+# Priority order (auto): groq → openai → anthropic → gemini → together → ollama
+# "auto"      → first available provider with a key set
+# "groq"      → Groq (free tier, fastest)
+# "openai"    → OpenAI GPT-4o
+# "anthropic" → Claude 3.5 Sonnet
+# "gemini"    → Google Gemini
+# "together"  → Together.ai (free models)
+# "ollama"    → Local Ollama (fallback, no key needed)
 LLM_PROVIDER  = os.getenv("LLM_PROVIDER", "auto")
+
+# ── Groq (free — 14,400 req/day) — console.groq.com ─────────────────────────
+GROQ_API_KEY  = os.getenv("GROQ_API_KEY",  "").strip()
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+GROQ_MODEL    = os.getenv("GROQ_MODEL",    "llama-3.3-70b-versatile")
+GROQ_FAST_MODEL = os.getenv("GROQ_FAST_MODEL", "llama-3.1-8b-instant")
+
+# ── OpenAI — platform.openai.com ─────────────────────────────────────────────
+OPENAI_API_KEY   = os.getenv("OPENAI_API_KEY",  "").strip()
+OPENAI_BASE_URL  = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+OPENAI_MODEL     = os.getenv("OPENAI_MODEL",    "gpt-4o-mini")
+
+# ── Anthropic Claude — console.anthropic.com ─────────────────────────────────
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+ANTHROPIC_MODEL   = os.getenv("ANTHROPIC_MODEL",   "claude-haiku-4-5-20251001")
+
+# ── Google Gemini — aistudio.google.com (free) ───────────────────────────────
+GEMINI_API_KEY  = os.getenv("GEMINI_API_KEY",  "").strip()
+GEMINI_MODEL    = os.getenv("GEMINI_MODEL",    "gemini-1.5-flash")
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
+
+# ── Together.ai (free models) — api.together.ai ──────────────────────────────
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY", "").strip()
+TOGETHER_BASE_URL = "https://api.together.xyz/v1"
+TOGETHER_MODEL   = os.getenv("TOGETHER_MODEL",  "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free")
+
+# ── Ollama (local fallback — no key needed) ───────────────────────────────────
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 # ── Security ──────────────────────────────────────────────────────────────────
 JWT_SECRET_PATH    = str(DATA_DIR / ".jwt_secret")

@@ -38,7 +38,12 @@ _tls = threading.local()
 
 from core.config import (
     OLLAMA_BASE_URL, DEFAULT_MODEL, TEMPERATURE, MAX_TOKENS,
-    GROQ_API_KEY, GROQ_BASE_URL, GROQ_MODEL, LLM_PROVIDER,
+    GROQ_API_KEY, GROQ_BASE_URL, GROQ_MODEL, GROQ_FAST_MODEL,
+    OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL,
+    ANTHROPIC_API_KEY, ANTHROPIC_MODEL,
+    GEMINI_API_KEY, GEMINI_BASE_URL, GEMINI_MODEL,
+    TOGETHER_API_KEY, TOGETHER_BASE_URL, TOGETHER_MODEL,
+    LLM_PROVIDER,
 )
 
 console = Console()
@@ -148,14 +153,37 @@ class Engine:
         self.use_cache    = use_cache
         self._lock        = threading.Lock()
 
-        # Select backend: groq (cloud) or ollama (local)
+        # ── Provider auto-detection (priority: groq→openai→anthropic→gemini→together→ollama)
+        self._backend   = "ollama"
+        self._available = False
+
         if LLM_PROVIDER == "groq" or (LLM_PROVIDER == "auto" and GROQ_API_KEY):
-            self._backend = "groq"
+            self._backend   = "groq"
             self._available = True
             console.print(f"[green]Engine ready[/] — Groq ({GROQ_MODEL})")
+
+        elif LLM_PROVIDER == "openai" or (LLM_PROVIDER == "auto" and OPENAI_API_KEY):
+            self._backend   = "openai"
+            self._available = True
+            console.print(f"[green]Engine ready[/] — OpenAI ({OPENAI_MODEL})")
+
+        elif LLM_PROVIDER == "anthropic" or (LLM_PROVIDER == "auto" and ANTHROPIC_API_KEY):
+            self._backend   = "anthropic"
+            self._available = True
+            console.print(f"[green]Engine ready[/] — Anthropic ({ANTHROPIC_MODEL})")
+
+        elif LLM_PROVIDER == "gemini" or (LLM_PROVIDER == "auto" and GEMINI_API_KEY):
+            self._backend   = "gemini"
+            self._available = True
+            console.print(f"[green]Engine ready[/] — Gemini ({GEMINI_MODEL})")
+
+        elif LLM_PROVIDER == "together" or (LLM_PROVIDER == "auto" and TOGETHER_API_KEY):
+            self._backend   = "together"
+            self._available = True
+            console.print(f"[green]Engine ready[/] — Together.ai ({TOGETHER_MODEL})")
+
         else:
             self._backend = "ollama"
-            self._available = False
             self._verify_connection()
 
     # ── Connection ─────────────────────────────────────────────────────────────
@@ -393,16 +421,219 @@ class Engine:
         except Exception as e:
             yield f"\n[Groq stream error: {type(e).__name__}]"
 
+    # ── OpenAI backend ────────────────────────────────────────────────────────
+
+    def _openai_generate(self, prompt, system="", model=None, temperature=None,
+                         max_tokens=None, timeout_s=None) -> str:
+        return self._openai_compat_generate(
+            prompt, system, model or OPENAI_MODEL,
+            OPENAI_API_KEY, OPENAI_BASE_URL,
+            temperature, max_tokens, timeout_s, "OpenAI"
+        )
+
+    def _openai_stream(self, prompt, system="", model=None, max_tokens=None):
+        yield from self._openai_compat_stream(
+            prompt, system, model or OPENAI_MODEL,
+            OPENAI_API_KEY, OPENAI_BASE_URL, max_tokens, "OpenAI"
+        )
+
+    # ── OpenAI-compatible generic backend (Together, Gemini, OpenAI) ──────────
+
+    def _openai_compat_generate(self, prompt, system, model, api_key, base_url,
+                                 temperature=None, max_tokens=None, timeout_s=None,
+                                 provider_name="API") -> str:
+        import requests as _req
+        messages = []
+        if system and system.strip():
+            messages.append({"role": "system", "content": system.strip()[:4000]})
+        messages.append({"role": "user", "content": prompt[:8000]})
+        payload = {
+            "model":       model,
+            "messages":    messages,
+            "temperature": temperature if temperature is not None else self.temperature,
+            "max_tokens":  max_tokens or MAX_TOKENS,
+        }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type":  "application/json",
+        }
+        use_timeout = timeout_s or self.timeout_s
+        for attempt in range(3):
+            try:
+                r = _req.post(
+                    f"{base_url}/chat/completions",
+                    json=payload, headers=headers,
+                    timeout=use_timeout, verify=False
+                )
+                r.raise_for_status()
+                return r.json()["choices"][0]["message"]["content"].strip()
+            except _req.exceptions.Timeout:
+                if attempt < 2:
+                    time.sleep(1)
+                    continue
+                return "Request timed out. Please try again."
+            except _req.exceptions.HTTPError as e:
+                status = e.response.status_code if e.response is not None else 0
+                if status == 429 and attempt < 2:
+                    time.sleep(2 ** attempt)
+                    continue
+                console.print(f"[red]{provider_name} HTTP {status}[/]")
+                return "An error occurred. Please try again."
+            except Exception as e:
+                if attempt < 2:
+                    time.sleep(0.5)
+                    continue
+                console.print(f"[red]{provider_name} error: {type(e).__name__}[/]")
+                return "An error occurred. Please try again."
+        return "An error occurred."
+
+    def _openai_compat_stream(self, prompt, system, model, api_key, base_url,
+                               max_tokens=None, provider_name="API"):
+        import requests as _req
+        messages = []
+        if system and system.strip():
+            messages.append({"role": "system", "content": system.strip()[:4000]})
+        messages.append({"role": "user", "content": prompt[:8000]})
+        payload = {
+            "model":       model,
+            "messages":    messages,
+            "temperature": self.temperature,
+            "max_tokens":  max_tokens or MAX_TOKENS,
+            "stream":      True,
+        }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type":  "application/json",
+        }
+        try:
+            with _req.post(
+                f"{base_url}/chat/completions",
+                json=payload, headers=headers,
+                stream=True, timeout=self.timeout_s, verify=False
+            ) as r:
+                for line in r.iter_lines():
+                    if not line:
+                        continue
+                    if line.startswith(b"data: "):
+                        data = line[6:]
+                        if data == b"[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(data)
+                            delta = chunk["choices"][0]["delta"].get("content", "")
+                            if delta:
+                                yield delta
+                        except Exception:
+                            continue
+        except Exception as e:
+            yield f"\n[{provider_name} stream error: {type(e).__name__}]"
+
+    # ── Anthropic Claude backend ───────────────────────────────────────────────
+
+    def _anthropic_generate(self, prompt, system="", model=None, temperature=None,
+                             max_tokens=None, timeout_s=None) -> str:
+        import requests as _req
+        headers = {
+            "x-api-key":         ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
+            "Content-Type":      "application/json",
+        }
+        payload = {
+            "model":      model or ANTHROPIC_MODEL,
+            "max_tokens": max_tokens or MAX_TOKENS,
+            "messages":   [{"role": "user", "content": prompt[:8000]}],
+        }
+        if system and system.strip():
+            payload["system"] = system.strip()[:4000]
+        if temperature is not None:
+            payload["temperature"] = temperature
+
+        use_timeout = timeout_s or self.timeout_s
+        for attempt in range(3):
+            try:
+                r = _req.post(
+                    "https://api.anthropic.com/v1/messages",
+                    json=payload, headers=headers,
+                    timeout=use_timeout, verify=False
+                )
+                r.raise_for_status()
+                return r.json()["content"][0]["text"].strip()
+            except _req.exceptions.Timeout:
+                if attempt < 2:
+                    time.sleep(1)
+                    continue
+                return "Request timed out."
+            except _req.exceptions.HTTPError as e:
+                status = e.response.status_code if e.response is not None else 0
+                if status == 429 and attempt < 2:
+                    time.sleep(2 ** attempt)
+                    continue
+                console.print(f"[red]Anthropic HTTP {status}[/]")
+                return "An error occurred. Please try again."
+            except Exception as e:
+                if attempt < 2:
+                    time.sleep(0.5)
+                    continue
+                return "An error occurred."
+        return "An error occurred."
+
+    def _anthropic_stream(self, prompt, system="", model=None, max_tokens=None):
+        import requests as _req
+        headers = {
+            "x-api-key":         ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
+            "Content-Type":      "application/json",
+        }
+        payload = {
+            "model":      model or ANTHROPIC_MODEL,
+            "max_tokens": max_tokens or MAX_TOKENS,
+            "messages":   [{"role": "user", "content": prompt[:8000]}],
+            "stream":     True,
+        }
+        if system and system.strip():
+            payload["system"] = system.strip()[:4000]
+        try:
+            with _req.post(
+                "https://api.anthropic.com/v1/messages",
+                json=payload, headers=headers,
+                stream=True, timeout=self.timeout_s, verify=False
+            ) as r:
+                for line in r.iter_lines():
+                    if not line:
+                        continue
+                    line_str = line.decode() if isinstance(line, bytes) else line
+                    if line_str.startswith("data: "):
+                        try:
+                            chunk = json.loads(line_str[6:])
+                            if chunk.get("type") == "content_block_delta":
+                                delta = chunk.get("delta", {}).get("text", "")
+                                if delta:
+                                    yield delta
+                        except Exception:
+                            continue
+        except Exception as e:
+            yield f"\n[Anthropic stream error: {type(e).__name__}]"
+
     def is_available(self) -> bool:
         return self._available
 
     def list_models(self) -> list[str]:
-        try:
-            import requests
-            r = requests.get(f"{self.base_url}/api/tags", timeout=5)
-            return [m["name"] for m in r.json().get("models", [])]
-        except Exception:
-            return []
+        if self._backend == "ollama":
+            try:
+                import requests
+                r = requests.get(f"{self.base_url}/api/tags", timeout=5)
+                return [m["name"] for m in r.json().get("models", [])]
+            except Exception:
+                return []
+        # Cloud providers — return configured model
+        provider_models = {
+            "groq":      [GROQ_MODEL, GROQ_FAST_MODEL],
+            "openai":    [OPENAI_MODEL],
+            "anthropic": [ANTHROPIC_MODEL],
+            "gemini":    [GEMINI_MODEL],
+            "together":  [TOGETHER_MODEL],
+        }
+        return provider_models.get(self._backend, [])
 
     # ── Core generation ──────────────────────────────────────────────────────
 
@@ -421,18 +652,42 @@ class Engine:
         Send a prompt, get a full response.
         Retries on timeout/500. Caches identical calls.
         """
-        # Route to Groq if configured
-        if self._backend == "groq":
-            use_cache_flag = use_cache if use_cache is not None else self.use_cache
-            use_temp = temperature if temperature is not None else self.temperature
+        use_cache_flag = use_cache if use_cache is not None else self.use_cache
+        use_temp       = temperature if temperature is not None else self.temperature
+
+        # ── Cloud provider routing ────────────────────────────────────────────
+        if self._backend in ("groq", "openai", "together", "gemini"):
+            cache_key_model = model or GROQ_MODEL
             if use_cache_flag and use_temp <= 0.4:
-                cached = _cache.get(prompt, model or GROQ_MODEL, use_temp)
+                cached = _cache.get(prompt, cache_key_model, use_temp)
                 if cached is not None:
                     return cached
-            result = self._groq_generate(prompt, system, model, temperature, max_tokens, timeout_s)
+
+            if self._backend == "groq":
+                result = self._groq_generate(prompt, system, model, temperature, max_tokens, timeout_s)
+            elif self._backend == "openai":
+                result = self._openai_generate(prompt, system, model, temperature, max_tokens, timeout_s)
+            elif self._backend == "together":
+                result = self._openai_compat_generate(
+                    prompt, system, model or TOGETHER_MODEL,
+                    TOGETHER_API_KEY, TOGETHER_BASE_URL,
+                    temperature, max_tokens, timeout_s, "Together.ai"
+                )
+            elif self._backend == "gemini":
+                result = self._openai_compat_generate(
+                    prompt, system, model or GEMINI_MODEL,
+                    GEMINI_API_KEY, GEMINI_BASE_URL,
+                    temperature, max_tokens, timeout_s, "Gemini"
+                )
+            else:
+                result = "Provider not available."
+
             if use_cache_flag and use_temp <= 0.4:
-                _cache.set(prompt, model or GROQ_MODEL, use_temp, result)
+                _cache.set(prompt, cache_key_model, use_temp, result)
             return result
+
+        if self._backend == "anthropic":
+            return self._anthropic_generate(prompt, system, model, temperature, max_tokens, timeout_s)
 
         if not self._available:
             # Re-check — Ollama may have recovered since the last failure
@@ -550,9 +805,27 @@ class Engine:
         if self._backend == "groq":
             yield from self._groq_stream(prompt, system, model, max_tokens)
             return
+        if self._backend == "openai":
+            yield from self._openai_stream(prompt, system, model, max_tokens)
+            return
+        if self._backend == "together":
+            yield from self._openai_compat_stream(
+                prompt, system, model or TOGETHER_MODEL,
+                TOGETHER_API_KEY, TOGETHER_BASE_URL, max_tokens, "Together.ai"
+            )
+            return
+        if self._backend == "gemini":
+            yield from self._openai_compat_stream(
+                prompt, system, model or GEMINI_MODEL,
+                GEMINI_API_KEY, GEMINI_BASE_URL, max_tokens, "Gemini"
+            )
+            return
+        if self._backend == "anthropic":
+            yield from self._anthropic_stream(prompt, system, model, max_tokens)
+            return
 
         if not self._available:
-            yield "Running in offline mode — Ollama not available."
+            yield "No LLM provider configured. Set GROQ_API_KEY in your .env file."
             return
 
         import requests
@@ -706,10 +979,19 @@ class Engine:
 
     def stats(self) -> dict:
         return {
-            "model":       self.model,
-            "available":   self._available,
-            "temperature": self.temperature,
-            "timeout_s":   self.timeout_s,
-            "cache_size":  _cache.size,
+            "backend":        self._backend,
+            "model":          self.model,
+            "available":      self._available,
+            "temperature":    self.temperature,
+            "timeout_s":      self.timeout_s,
+            "cache_size":     _cache.size,
             "adaptive_model": self._adaptive_model,
+            "providers": {
+                "groq":      bool(GROQ_API_KEY),
+                "openai":    bool(OPENAI_API_KEY),
+                "anthropic": bool(ANTHROPIC_API_KEY),
+                "gemini":    bool(GEMINI_API_KEY),
+                "together":  bool(TOGETHER_API_KEY),
+                "ollama":    self._backend == "ollama" and self._available,
+            }
         }
