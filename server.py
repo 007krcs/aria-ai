@@ -981,6 +981,42 @@ def build_aria():
 
 aria = build_aria()
 
+# ── BrainCore — central cognitive authority ───────────────────────────────────
+try:
+    from core.brain_core import get_brain
+    aria["brain"] = get_brain()
+    console.print("  [green][OK][/] BrainCore initialized — central cognitive authority active")
+except Exception as _brain_err:
+    aria["brain"] = None
+    console.print(f"  [yellow][WARN] BrainCore: {_brain_err}[/]")
+
+# ── Memory Hierarchy ──────────────────────────────────────────────────────────
+try:
+    from core.memory_hierarchy import MemoryHierarchy
+    aria["memory_hierarchy"] = MemoryHierarchy()
+    console.print("  [green][OK][/] Memory Hierarchy — Working/Episodic/Semantic/Procedural layers ready")
+except Exception as _mh_err:
+    aria["memory_hierarchy"] = None
+    console.print(f"  [yellow][WARN] MemoryHierarchy: {_mh_err}[/]")
+
+# ── Model Router ──────────────────────────────────────────────────────────────
+try:
+    from core.model_router import ModelRouter
+    aria["model_router"] = ModelRouter()
+    console.print("  [green][OK][/] ModelRouter — intelligent model selection active")
+except Exception as _mr_err:
+    aria["model_router"] = None
+    console.print(f"  [yellow][WARN] ModelRouter: {_mr_err}[/]")
+
+# ── Internet Learner ──────────────────────────────────────────────────────────
+try:
+    from core.internet_learner import InternetLearner
+    aria["internet_learner"] = InternetLearner()
+    console.print("  [green][OK][/] InternetLearner — safe retrieval-based learning active")
+except Exception as _il_err:
+    aria["internet_learner"] = None
+    console.print(f"  [yellow][WARN] InternetLearner: {_il_err}[/]")
+
 app = FastAPI(title="ARIA API", version="3.0.0")
 # Security middleware (rate limiting + body size cap) — must be outermost
 app.add_middleware(SecurityMiddleware)
@@ -5258,6 +5294,147 @@ def serve_learn():
     return FileResponse(str(f)) if f.exists() else HTMLResponse("<h2>Place ui/learn.html</h2>")
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BRAIN CORE API — Central cognitive authority endpoints
+# ══════════════════════════════════════════════════════════════════════════════
+
+class BrainMemoryReq(BaseModel):
+    text: str
+    memory_type: str = "semantic"   # semantic | episodic | procedural
+
+class BrainGoalReq(BaseModel):
+    goal: str
+    level: str = "session"          # immediate | session | long_term
+
+class BrainResearchReq(BaseModel):
+    query: str
+    max_sources: int = 3
+    store: bool = True
+
+class BrainForgetReq(BaseModel):
+    query: str
+
+
+@app.get("/api/brain/status")
+def brain_status():
+    """Full brain health report — all cognitive systems."""
+    brain  = aria.get("brain")
+    router = aria.get("model_router")
+    mem_h  = aria.get("memory_hierarchy")
+
+    return {
+        "brain_active":   brain is not None,
+        "session_summary": brain.get_session_summary() if brain else "offline",
+        "memory_stats":   mem_h.stats() if mem_h else {},
+        "goals":          brain.goals.summary() if brain and brain.goals else {},
+        "model_router":   router.status() if router else {},
+        "self_model":     {
+            "interaction_count": brain.self_model._data.get("interaction_count", 0),
+            "identity": brain.self_model._data.get("identity", {}),
+        } if brain else {},
+    }
+
+
+@app.post("/api/brain/remember")
+def brain_remember(req: BrainMemoryReq):
+    """Explicitly store something in ARIA's memory."""
+    brain = aria.get("brain")
+    if not brain:
+        raise HTTPException(status_code=503, detail="BrainCore offline")
+    brain.remember(req.text, req.memory_type)
+    return {"stored": True, "type": req.memory_type, "text": req.text[:100]}
+
+
+@app.post("/api/brain/forget")
+def brain_forget(req: BrainForgetReq):
+    """Remove memories matching a query."""
+    brain = aria.get("brain")
+    if not brain:
+        raise HTTPException(status_code=503, detail="BrainCore offline")
+    brain.forget(req.query)
+    return {"forgotten": True, "query": req.query}
+
+
+@app.get("/api/brain/memory")
+def brain_memory_search(q: str = "", layer: str = "all"):
+    """Search ARIA's memory hierarchy."""
+    mem_h = aria.get("memory_hierarchy")
+    if not mem_h:
+        raise HTTPException(status_code=503, detail="MemoryHierarchy offline")
+
+    if not q:
+        return {
+            "stats":       mem_h.stats(),
+            "preferences": mem_h.get_preferences()[:10],
+            "workflows":   mem_h.get_workflows()[:5],
+        }
+
+    results = mem_h.search(q, k=10)
+    return {"query": q, "results": results, "count": len(results)}
+
+
+@app.post("/api/brain/goal")
+def brain_set_goal(req: BrainGoalReq):
+    """Add a goal to ARIA's goal engine."""
+    brain = aria.get("brain")
+    if not brain:
+        raise HTTPException(status_code=503, detail="BrainCore offline")
+    goal_id = brain.set_goal(req.goal, req.level)
+    return {"goal_id": goal_id, "goal": req.goal, "level": req.level}
+
+
+@app.get("/api/brain/goals")
+def brain_get_goals(level: str = ""):
+    """Get active goals."""
+    brain = aria.get("brain")
+    if not brain or not brain.goals:
+        return {"goals": []}
+    active = brain.goals.get_active(level=level or None)
+    return {"goals": active, "summary": brain.goals.summary()}
+
+
+@app.post("/api/brain/research")
+async def brain_research(req: BrainResearchReq):
+    """
+    Internet research with safe learning.
+    Searches web, scores sources, stores trusted facts in memory.
+    """
+    learner = aria.get("internet_learner")
+    if not learner:
+        raise HTTPException(status_code=503, detail="InternetLearner offline")
+
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(
+        _thread_pool,
+        lambda: learner.research(req.query, req.max_sources, req.store)
+    )
+    return result
+
+
+@app.get("/api/brain/model-router")
+def brain_model_router(complexity: str = "medium", intent: str = "question"):
+    """Show which model ARIA would select for a given task."""
+    router = aria.get("model_router")
+    if not router:
+        raise HTTPException(status_code=503, detail="ModelRouter offline")
+    return {
+        "selected":    router.select(complexity, intent),
+        "explanation": router.explain(complexity, intent),
+        "available":   router.available_models(),
+    }
+
+
+@app.get("/api/brain/reflection")
+def brain_reflection_stats():
+    """Self-reflection analytics — quality scores over time."""
+    try:
+        from core.self_reflection import SelfReflector
+        r = SelfReflector()
+        return {"stats": r.get_stats(), "recent": r.get_recent(5)}
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn
