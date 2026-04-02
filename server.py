@@ -883,8 +883,19 @@ def build_aria():
     except Exception as _ne:
         import traceback as _tb
         print(f"  [WARN] NeuralOrchestrator failed: {_ne}")
-        _tb.print_exc()
         _neural_stub = _omega_stub  # graceful fallback to OmegaOrchestrator
+
+    # ── SynapticChain — sequential dot-connecting (PRIMARY) ────────────────────
+    try:
+        from agents.synaptic_chain import SynapticChain
+        _synaptic_chain = SynapticChain(engine=engine, aria={
+            "engine": engine, "memory": memory, "tools": tools,
+            "world_model": world, "memory_hierarchy": None,  # wired after build_aria()
+        })
+        print("  [OK] SynapticChain — sequential dot-connecting intelligence ACTIVE")
+    except Exception as _sc_err:
+        _synaptic_chain = None
+        print(f"  [WARN] SynapticChain: {_sc_err}")
 
     # ── AutoExecutor — autonomous action engine ───────────────────────────────
     try:
@@ -931,9 +942,10 @@ def build_aria():
         tools=tool_registry, improver=improver,
         train_buffer=train_buffer, train_scheduler=train_scheduler,
         proactive=proactive, calendar=calendar_agent,
-        # Orchestrators (neural is primary, omega is fallback)
+        # Orchestrators: synaptic_chain (primary) → neural → omega
         omega=_omega_stub,
         neural=_neural_stub,
+        synaptic_chain=_synaptic_chain,
         # Desktop & specialist agents
         desktop=desktop_agent,
         browser=browser_agent,
@@ -1427,7 +1439,50 @@ async def chat_stream(req: ChatReq):
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
-    # ── NeuralOrchestrator path (neuromorphic, primary) ──────────────────────
+    # ── SynapticChain path (sequential dot-connecting — PRIMARY) ─────────────
+    synaptic = aria.get("synaptic_chain")
+    if synaptic:
+        # Wire memory_hierarchy into synaptic chain if available
+        if aria.get("memory_hierarchy"):
+            synaptic.aria["memory_hierarchy"] = aria["memory_hierarchy"]
+
+        async def _synaptic_recorded():
+            _reply_parts = []
+            async for chunk in synaptic.stream(req.message, city=getattr(req, "city", "") or ""):
+                yield chunk
+                try:
+                    data = json.loads(chunk[5:]) if chunk.startswith("data:") else {}
+                    if data.get("type") == "done" and data.get("text"):
+                        _reply_parts.append(data["text"])
+                except Exception:
+                    pass
+            _full_reply = "".join(_reply_parts).strip()
+            if _full_reply:
+                _tp = aria.get("train_pipeline")
+                if _tp and not isinstance(_tp, _Stub):
+                    try:
+                        _tp.collector.record(req.message, _full_reply, quality=0.8)
+                    except Exception:
+                        pass
+                # Store in brain memory
+                _brain = aria.get("brain")
+                if _brain:
+                    try:
+                        _brain._post_process(req.message, _full_reply, {
+                            "intent": {"intent": "question", "complexity": "medium"},
+                            "memory": "", "goals": "", "history": "",
+                            "system": "", "timestamp": datetime.now().isoformat(),
+                        })
+                    except Exception:
+                        pass
+
+        return StreamingResponse(
+            _synaptic_recorded(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    # ── NeuralOrchestrator path (parallel fallback) ───────────────────────────
     neural = aria.get("neural")
     if neural and not isinstance(neural, _Stub):
         # Start background loop on first request (lazy start)
